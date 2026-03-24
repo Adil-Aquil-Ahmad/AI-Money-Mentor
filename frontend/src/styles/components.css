@@ -1,0 +1,758 @@
+/* =============================================
+   AI Money Mentor — Shared Component Styles
+   Modal, forms, cards, score ring, charts, buttons
+   ============================================= */
+
+/* -- Buttons --------------------------------------------------------------- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  box-shadow: 0 2px 10px rgba(15, 158, 153, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+.btn-full { width: 100%; }
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+/* -- Modal ----------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s var(--ease);
+}
+
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overflow: hidden;
+  animation: slideUp 0.3s var(--ease);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(90dvh - 60px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* -- Forms ----------------------------------------------------------------- */
+.form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-group select {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2394a3b8' stroke-width='2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.form-group select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* -- Health Score Ring ----------------------------------------------------- */
+.health-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.score-ring-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin-bottom: 12px;
+}
+
+.score-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.score-ring-bg {
+  fill: none;
+  stroke: var(--bg-elevated);
+  stroke-width: 8;
+}
+
+.score-ring-fill {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-dasharray: 326.73;
+  stroke-dashoffset: 326.73;
+  transition: stroke-dashoffset 1.5s var(--ease), stroke 0.5s var(--ease);
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+}
+
+.score-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-value #score-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.score-value .score-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.score-grade {
+  font-size: 1.3rem;
+  font-weight: 700;
+  padding: 4px 20px;
+  border-radius: var(--radius-full);
+  background: var(--primary-glow);
+  color: var(--primary-light);
+  margin-bottom: 8px;
+}
+
+.score-message {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 300px;
+}
+
+/* Health category cards */
+.health-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.health-cat-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  animation: fadeIn 0.3s var(--ease) forwards;
+}
+
+.health-cat-card .cat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.health-cat-card .cat-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.health-cat-card .cat-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.health-cat-card .cat-score {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.health-cat-card .cat-score.good { color: var(--success); }
+.health-cat-card .cat-score.fair { color: var(--warning); }
+.health-cat-card .cat-score.poor { color: var(--danger); }
+
+/* Suggestions */
+.health-suggestions {
+  margin-bottom: 20px;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  background: rgba(240, 180, 41, 0.06);
+  border: 1px solid rgba(240, 180, 41, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  animation: fadeIn 0.3s var(--ease) forwards;
+}
+
+.suggestion-item .sug-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+/* -- FIRE Results ---------------------------------------------------------- */
+.fire-results,
+.whatif-results {
+  margin-top: 20px;
+}
+
+.fire-summary,
+.whatif-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-align: center;
+  animation: fadeIn 0.3s var(--ease) forwards;
+}
+
+.summary-card .card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.summary-card .card-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary-light);
+}
+
+.summary-card .card-value.accent {
+  color: var(--accent);
+}
+
+.summary-card.highlight {
+  background: linear-gradient(135deg, rgba(15, 158, 153, 0.15) 0%, rgba(160, 194, 174, 0.08) 100%);
+  border-color: rgba(15, 158, 153, 0.3);
+}
+
+/* Milestones */
+.milestones {
+  margin-top: 16px;
+}
+
+.milestone-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  animation: fadeIn 0.3s var(--ease) forwards;
+}
+
+.milestone-item .ms-year {
+  font-weight: 700;
+  color: var(--primary-light);
+  min-width: 60px;
+}
+
+.milestone-item .ms-label {
+  color: var(--text-secondary);
+}
+
+.milestone-item .ms-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Insight card */
+.insight-card {
+  padding: 16px;
+  margin-top: 16px;
+  background: linear-gradient(135deg, rgba(240, 180, 41, 0.08) 0%, rgba(15, 158, 153, 0.08) 100%);
+  border: 1px solid rgba(240, 180, 41, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* -- Charts ---------------------------------------------------------------- */
+canvas {
+  width: 100% !important;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+/* -- Current Investments -------------------------------------------------- */
+.portfolio-view-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.portfolio-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.portfolio-stack,
+.portfolio-block {
+  margin-bottom: 20px;
+}
+
+.portfolio-health-card {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.portfolio-health-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.portfolio-health-summary {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  max-width: 260px;
+}
+
+.portfolio-health-score {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--primary-light);
+}
+
+.portfolio-health-score span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.portfolio-health-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.portfolio-health-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--bg-card) 86%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.portfolio-health-pill strong {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.portfolio-allocation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.allocation-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 56px;
+  gap: 10px;
+  align-items: center;
+}
+
+.allocation-label,
+.allocation-value {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.allocation-bar {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.allocation-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.portfolio-form {
+  margin-top: 10px;
+}
+
+.portfolio-form-action {
+  display: flex;
+  align-items: flex-end;
+}
+
+.portfolio-assets-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.portfolio-asset-card,
+.portfolio-news-card,
+.portfolio-empty-card,
+.portfolio-alert {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.portfolio-asset-card {
+  padding: 16px;
+}
+
+.portfolio-asset-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.portfolio-asset-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.portfolio-asset-meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.asset-delete-btn {
+  border: none;
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border-radius: var(--radius-full);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.portfolio-asset-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.portfolio-asset-stats span {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.portfolio-asset-stats strong {
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.portfolio-asset-stats .positive strong,
+.portfolio-tag.positive {
+  color: var(--success);
+}
+
+.portfolio-asset-stats .negative strong,
+.portfolio-tag.negative {
+  color: var(--danger);
+}
+
+.portfolio-asset-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portfolio-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  border: 1px solid var(--border);
+}
+
+.portfolio-asset-news {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.portfolio-asset-news-item,
+.portfolio-news-card {
+  text-decoration: none;
+  color: inherit;
+}
+
+.portfolio-asset-news-item {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.portfolio-asset-news-item span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.portfolio-news-card {
+  display: block;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.portfolio-news-asset {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.portfolio-news-headline {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.portfolio-news-source {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.portfolio-alert {
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.portfolio-alert.read {
+  opacity: 0.75;
+}
+
+.portfolio-alert-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.portfolio-alert-body,
+.portfolio-empty-card {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.portfolio-empty-card {
+  padding: 16px;
+}
+
+@media (max-width: 420px) {
+  .portfolio-view-header,
+  .portfolio-health-header,
+  .portfolio-asset-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .portfolio-health-grid,
+  .portfolio-asset-stats,
+  .fire-summary,
+  .whatif-summary,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .allocation-row {
+    grid-template-columns: 70px 1fr 48px;
+  }
+}

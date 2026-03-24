@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="AI Money Mentor — Your personal AI-powered financial advisor for smart money decisions." />
+  <meta name="theme-color" content="#0a0f1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>AI Money Mentor</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/src/styles/main.css" />
+  <link rel="stylesheet" href="/src/styles/chat.css" />
+  <link rel="stylesheet" href="/src/styles/components.css" />
+</head>
+<body>
+
+  <!-- ===== LOGIN VIEW ===== -->
+  <div id="login-view" class="login-view">
+    <div class="login-card">
+      <div class="login-logo">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h1 class="login-title">Money Mentor</h1>
+      <p class="login-subtitle">Your AI Financial Advisor</p>
+
+      <div id="login-error" class="login-error hidden"></div>
+
+      <form id="login-form" class="login-form">
+        <div id="signup-name-group" class="form-group hidden">
+          <input type="text" id="login-name" placeholder="Full Name" autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <input type="email" id="login-email" placeholder="Email" autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required minlength="6" />
+        </div>
+        <button type="submit" id="btn-login" class="btn-primary btn-full">Login</button>
+      </form>
+
+      <button id="btn-toggle-signup" class="btn-link">Don't have an account? Sign up</button>
+
+      <div class="login-divider">
+        <span>or</span>
+      </div>
+
+      <button id="btn-google-login" class="btn-google">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continue with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== APP SHELL (hidden until auth) ===== -->
+  <div id="app" class="hidden">
+
+    <!-- Top Navigation Bar -->
+    <header id="app-header">
+      <button id="btn-menu" class="icon-btn" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="header-title">
+        <span class="header-logo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </span>
+        <h1>Money Mentor</h1>
+      </div>
+      <div class="header-actions">
+        <button id="btn-theme" class="icon-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button id="btn-profile" class="icon-btn" aria-label="Profile">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Side Navigation Drawer -->
+    <div id="nav-overlay" class="nav-overlay"></div>
+    <nav id="side-nav" class="side-nav">
+      <div class="nav-header">
+        <span class="nav-logo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </span>
+        <span>Money Mentor</span>
+      </div>
+      <ul class="nav-list">
+        <li><button class="nav-item active" data-view="chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat
+        </button></li>
+        <li><button class="nav-item" data-view="investments">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-7"/></svg>
+          Current Investments
+        </button></li>
+        <li><button class="nav-item" data-view="health">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Health Score
+        </button></li>
+        <li><button class="nav-item" data-view="fire">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          FIRE Calculator
+        </button></li>
+        <li><button class="nav-item" data-view="whatif">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          What-If Simulator
+        </button></li>
+      </ul>
+      <div class="nav-footer">
+        <button id="btn-clear-chat" class="nav-item danger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Clear Chat
+        </button>
+        <button id="btn-logout" class="nav-item danger">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
+        </button>
+      </div>
+    </nav>
+
+    <!-- ===== VIEWS ===== -->
+
+    <!-- Chat View -->
+    <main id="view-chat" class="view active">
+      <div id="chat-messages" class="chat-messages">
+        <!-- Welcome message injected by JS -->
+      </div>
+      <div id="typing-indicator" class="typing-indicator hidden">
+        <div class="typing-avatar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/></svg>
+        </div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <form id="chat-form" class="chat-input-bar">
+        <input
+          type="text"
+          id="chat-input"
+          placeholder="Ask about investments, savings, tax..."
+          autocomplete="off"
+        />
+        <button type="submit" id="btn-send" class="send-btn" aria-label="Send">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </form>
+    </main>
+
+    <!-- Current Investments View -->
+    <main id="view-investments" class="view">
+      <div class="view-content">
+        <div class="portfolio-view-header">
+          <div>
+            <h2 class="view-title">Current Investments</h2>
+            <p class="view-subtitle">Track live performance, concentration, and market news for your holdings</p>
+          </div>
+          <button id="btn-refresh-investments" class="btn-secondary">Refresh</button>
+        </div>
+
+        <div id="portfolio-summary" class="fire-summary"></div>
+        <div id="portfolio-health"></div>
+        <div id="portfolio-notifications" class="portfolio-stack"></div>
+        <div id="portfolio-allocation" class="portfolio-block"></div>
+
+        <div class="form-card">
+          <div class="portfolio-section-title">Add Investment</div>
+          <form id="investments-form" class="portfolio-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inv-type">Asset Type</label>
+                <select id="inv-type">
+                  <option value="stock">Stock</option>
+                  <option value="mutual_fund">Mutual Fund</option>
+                  <option value="sip">SIP</option>
+                  <option value="gold">Gold</option>
+                  <option value="crypto">Crypto</option>
+                  <option value="cash">Cash</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="inv-name">Name</label>
+                <input type="text" id="inv-name" placeholder="Reliance Industries" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inv-symbol">Symbol</label>
+                <input type="text" id="inv-symbol" placeholder="RELIANCE.NS" />
+              </div>
+              <div class="form-group">
+                <label for="inv-amount">Amount Invested (₹)</label>
+                <input type="number" id="inv-amount" placeholder="200000" min="0" step="1" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inv-quantity">Quantity</label>
+                <input type="number" id="inv-quantity" placeholder="10" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label for="inv-avg-price">Average Price (₹)</label>
+                <input type="number" id="inv-avg-price" placeholder="2000" min="0" step="0.01" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inv-sip-amount">Monthly SIP (₹)</label>
+                <input type="number" id="inv-sip-amount" placeholder="10000" min="0" step="1" />
+              </div>
+              <div class="form-group portfolio-form-action">
+                <button type="submit" class="btn-primary btn-full">Add Investment</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div id="portfolio-assets" class="portfolio-block"></div>
+        <div id="portfolio-news" class="portfolio-block"></div>
+      </div>
+    </main>
+
+    <!-- Health Score View -->
+    <main id="view-health" class="view">
+      <div class="view-content">
+        <h2 class="view-title">Money Health Score</h2>
+        <p class="view-subtitle">A snapshot of your financial wellness</p>
+        <div id="health-score-container" class="health-container">
+          <div class="score-ring-wrapper">
+            <svg class="score-ring" viewBox="0 0 120 120">
+              <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+              <circle id="score-ring-fill" class="score-ring-fill" cx="60" cy="60" r="52" />
+            </svg>
+            <div class="score-value">
+              <span id="score-number">--</span>
+              <span class="score-label">/ 100</span>
+            </div>
+          </div>
+          <div id="score-grade" class="score-grade">-</div>
+          <p id="score-message" class="score-message">Set up your profile to see your score.</p>
+        </div>
+        <div id="health-categories" class="health-categories"></div>
+        <div id="health-suggestions" class="health-suggestions"></div>
+        <button id="btn-refresh-health" class="btn-primary">Refresh Score</button>
+      </div>
+    </main>
+
+    <!-- FIRE Calculator View -->
+    <main id="view-fire" class="view">
+      <div class="view-content">
+        <h2 class="view-title">FIRE Calculator</h2>
+        <p class="view-subtitle">Financial Independence, Retire Early</p>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="fire-sip">Monthly SIP (₹)</label>
+            <input type="number" id="fire-sip" value="10000" min="500" />
+          </div>
+          <div class="form-group">
+            <label for="fire-return">Expected Return (%/year)</label>
+            <input type="number" id="fire-return" value="12" min="1" max="30" step="0.5" />
+          </div>
+          <div class="form-group">
+            <label for="fire-target">Target Corpus (₹)</label>
+            <input type="number" id="fire-target" value="10000000" min="100000" />
+          </div>
+          <div class="form-group">
+            <label for="fire-current">Current Investments (₹)</label>
+            <input type="number" id="fire-current" value="0" min="0" />
+          </div>
+          <div class="form-group">
+            <label for="fire-expenses">Monthly Expenses (₹)</label>
+            <input type="number" id="fire-expenses" value="30000" min="0" />
+          </div>
+          <button id="btn-calc-fire" class="btn-primary">Calculate</button>
+        </div>
+        <div id="fire-results" class="fire-results hidden">
+          <div id="fire-summary" class="fire-summary"></div>
+          <canvas id="fire-chart" height="250"></canvas>
+          <div id="fire-milestones" class="milestones"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- What-If Simulator View -->
+    <main id="view-whatif" class="view">
+      <div class="view-content">
+        <h2 class="view-title">What-If Simulator</h2>
+        <p class="view-subtitle">See the power of your financial decisions</p>
+        <div class="form-card">
+          <div class="form-group">
+            <label for="whatif-type">Scenario</label>
+            <select id="whatif-type">
+              <option value="sip_growth">SIP Growth Projection</option>
+              <option value="lumpsum">Lumpsum Investment</option>
+              <option value="expense_cut">Cut Expense &amp; Invest</option>
+              <option value="loan_prepay">Loan Prepayment</option>
+            </select>
+          </div>
+          <div id="whatif-fields"></div>
+          <button id="btn-calc-whatif" class="btn-primary">Simulate</button>
+        </div>
+        <div id="whatif-results" class="whatif-results hidden">
+          <div id="whatif-summary" class="whatif-summary"></div>
+          <canvas id="whatif-chart" height="250"></canvas>
+          <div id="whatif-insight" class="insight-card"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>Your Profile</h2>
+          <button id="btn-close-profile" class="icon-btn" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <form id="profile-form" class="modal-body">
+          <div class="form-group">
+            <label for="p-name">Name</label>
+            <input type="text" id="p-name" placeholder="Your name" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-age">Age</label>
+              <input type="number" id="p-age" placeholder="25" min="18" max="100" />
+            </div>
+            <div class="form-group">
+              <label for="p-risk">Risk Profile</label>
+              <select id="p-risk">
+                <option value="low">Low Risk</option>
+                <option value="medium" selected>Medium Risk</option>
+                <option value="high">High Risk</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-income">Monthly Income (₹)</label>
+              <input type="number" id="p-income" placeholder="40000" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="p-expenses">Monthly Expenses (₹)</label>
+              <input type="number" id="p-expenses" placeholder="25000" min="0" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-savings">Current Savings (₹)</label>
+              <input type="number" id="p-savings" placeholder="50000" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="p-investments">Investments (₹)</label>
+              <input type="number" id="p-investments" placeholder="100000" min="0" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="p-debt">Current Debt (₹)</label>
+              <input type="number" id="p-debt" placeholder="0" min="0" />
+            </div>
+            <div class="form-group">
+              <label for="p-efund-months">Emergency Fund (months)</label>
+              <input type="number" id="p-efund-months" placeholder="0" min="0" max="24" step="0.5" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="checkbox-label">
+              <input type="checkbox" id="p-insurance" />
+              <span>Has Insurance</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="p-efund" />
+              <span>Has Emergency Fund</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="p-goals">Goals (comma-separated)</label>
+            <input type="text" id="p-goals" placeholder="Buy a car, Save for wedding, Build emergency fund" />
+          </div>
+          <button type="submit" class="btn-primary btn-full">Save Profile</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- App Script -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

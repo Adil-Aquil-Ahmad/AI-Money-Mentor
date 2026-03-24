@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+.env
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.cache/
+
+# Capacitor
+frontend/android/
+frontend/ios/
+
+# SQLite
+backend/data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
