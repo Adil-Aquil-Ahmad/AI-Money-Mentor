@@ -1,0 +1,85 @@
+/* Light Mode Overrides for Hardcoded Dark Theme Colors */
+html:not(.dark) .text-white {
+  color: #042142 !important;
+}
+html:not(.dark) .bg-white\/5 {
+  background-color: rgba(4, 33, 66, 0.05) !important;
+}
+html:not(.dark) .bg-white\/10 {
+  background-color: rgba(4, 33, 66, 0.1) !important;
+}
+html:not(.dark) .border-white\/10 {
+  border-color: rgba(4, 33, 66, 0.2) !important;
+}
+html:not(.dark) .border-white\/5 {
+  border-color: rgba(4, 33, 66, 0.1) !important;
+}
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(4, 33, 66, 0.3) !important;
+}
+html:not(.dark) .text-slate-200 {
+  color: #042142 !important;
+}
+html:not(.dark) .text-slate-300 {
+  color: #153C6A !important;
+}
+html:not(.dark) .text-slate-400 {
+  color: #2475AC !important;
+}
+html:not(.dark) .bg-slate-700 {
+  background-color: #cbd5e1 !important;
+}
+
+/* Maintain pure white text on buttons and gradient backgrounds */
+html:not(.dark) .bg-gradient-to-r .text-white,
+html:not(.dark) .bg-gradient-to-br .text-white,
+html:not(.dark) .bg-gradient-to-l .text-white,
+html:not(.dark) button.text-white,
+html:not(.dark) .always-white,
+html:not(.dark) .peer-checked\:after\:border-white::after,
+html:not(.dark) .after\:bg-white::after {
+  color: #ffffff !important;
+}
+
+/* Chat Advisor specific */
+html:not(.dark) .bg-\[\#153C6A\]\/30 {
+  background-color: rgba(21, 60, 106, 0.1) !important;
+}
+html:not(.dark) .bg-\[\#733E85\]\/20 {
+  background-color: rgba(115, 62, 133, 0.1) !important;
+}
+html:not(.dark) .border-\[\#3DE0FC\]\/30 {
+  border-color: rgba(61, 224, 252, 0.5) !important;
+}
+html:not(.dark) .border-\[\#E977F5\]\/30 {
+  border-color: rgba(233, 119, 245, 0.5) !important;
+}
+html:not(.dark) .bg-\[\#042142\]\/60 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 4px 20px rgba(4, 33, 66, 0.05);
+}
+html:not(.dark) .bg-\[\#042142\]\/80 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 10px 40px rgba(4, 33, 66, 0.1);
+}
+
+/* Fix GlassCard backdrops */
+html:not(.dark) .bg-white\/\[0\.02\] {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(4, 33, 66, 0.1) !important;
+}
+html:not(.dark) .bg-white\/\[0\.01\] {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+  border-color: rgba(4, 33, 66, 0.1) !important;
+}
+
+/* Fix Recharts stroke color in light mode */
+html:not(.dark) .recharts-cartesian-grid-horizontal line {
+  stroke: rgba(4, 33, 66, 0.1) !important;
+}
+html:not(.dark) .recharts-cartesian-axis-line {
+  stroke: rgba(4, 33, 66, 0.2) !important;
+}
+html:not(.dark) .recharts-cartesian-axis-tick-value {
+  fill: #2475AC !important;
+}

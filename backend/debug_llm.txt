@@ -1,0 +1,221 @@
+=== SINGLE PASS ===
+
+--- SYSTEM PROMPT ---
+MASTER SYSTEM PROMPT - AI MONEY MENTOR
+
+You are a professional Indian financial advisor.
+Your job is to explain a financial strategy that is already computed by the backend.
+Do not invent new numbers. You may reason using provided values.
+Use the strategy object as the source of truth.
+Do not fall back to generic allocations or beginner templates.
+
+You must first determine:
+1. The user's biggest financial priority
+2. How existing savings should be used
+3. The safest optimal strategy for their goal
+
+If the user has high savings, start from capital allocation, not SIP advice.
+If the user has large existing savings, always explain how the current corpus should be split before discussing monthly flows.
+If timeline or goal cost is unclear, say that directly and keep the strategy conservative.
+If the user has an emergency fund gap or costly debt, do not ignore it.
+If the user asks multiple questions, you must answer all parts and must not ignore any portion.
+Whenever a user provides a specific amount of money, you must explain how to allocate it.
+If the user provides total savings, you must allocate 100% of that amount. No partial allocation is allowed.
+If the user asks for stocks, you must provide 3-5 example stocks or sectors, or index funds plus 1-2 stock examples.
+For savings-allocation questions, do not stop at monthly flow. Start with the existing corpus split.
+For stock-related queries, use live yfinance-backed data when available and show price plus percentage change.
+If the user has monthly savings, you must provide a SIP amount and SIP type.
+Keep the answer practical, financially correct, and personalized.
+Target length: 100-180 words.
+
+
+--- USER PROMPT ---
+User question:
+If i had to purchase a car with the house goal what should i do?
+
+Normalized profile:
+- Age: 21
+- Monthly income: Rs400,000
+- Monthly expenses: Rs100,000
+- Monthly savings: Rs300,000
+- Savings rate: 75.0%
+- Total savings: Rs3,200,000
+- Current investments: Rs100,000
+- Current debt: Rs0
+- Risk profile: medium
+- Emergency fund months: 6
+- Goal horizon: unknown
+- Goals: buy a house, buy a car
+Deterministic strategy:
+- Primary priority: protect house capital and separate it from long-term investing
+- Secondary priority: use existing savings first, then build the down-payment stream
+- Capital allocation: Treat Rs600,000 from the current savings corpus as the emergency reserve; this is part of the existing savings, not extra money.
+- Capital allocation: From the remaining Rs2,600,000, keep roughly Rs2,000,000-2,200,000 in safe assets for the house fund.
+- Capital allocation: Limit long-term investing to roughly Rs400,000-600,000 from savings until the house timeline and budget are clear.
+- Monthly plan: From monthly surplus, direct about Rs150,000-200,000 to the house fund.
+- Monthly plan: Run SIPs of about Rs100,000-150,000 per month into index or hybrid funds for long-term goals.
+- Monthly plan: Clarify the target purchase timeline and house budget before increasing equity exposure.
+- Constraint: Do not use short-horizon house money for aggressive equity exposure.
+- Warning: Generic SIP-first advice is wrong when large savings already exist for a house goal.
+- Warning: House timeline is not clear, so the default stance should stay conservative.
+- SIP guidance: SIP range: Rs100,000-150,000 per month in Nifty 50 index funds and hybrid funds.
+- Fact: Monthly income is Rs400,000 and expenses are Rs100,000.
+- Fact: Current savings are Rs3,200,000 with monthly surplus Rs300,000.
+- Fact: Emergency fund target is Rs600,000 and current gap is Rs0.
+- Fact: Primary goal is buy a house with unknown horizon.
+- Fact: User asked a compound query covering: multi_goal_planning, goal_planning.
+Computed financial facts:
+- Emergency fund target: Rs600,000
+- Emergency fund gap: Rs0
+- Investable surplus beyond reserve: Rs2,600,000
+- Income strength: strong
+- Debt pressure: low
+Long-term memory:
+- Likes a major step by step guide about stocks sips etc?
+Recent conversation:
+- Advisor: Capital Allocation:
+- Full allocation of Rs3,200,000 is covered below.
+- Treat Rs600,000 from the current savings corpus as the emergency re...
+- User: If i had to purchase a car with the house goal what should i do?
+- Advisor: Capital Allocation:
+- From monthly surplus, direct about Rs150,000-200,000 to the house fund.
+- Run SIPs of about Rs100,000-150,000 per mont...
+Requested answer coverage:
+- multi_goal_planning
+- goal_planning
+Intent playbook:
+- goal_planning: Prioritize goals and separate money by goal and timeline.
+
+Write the final response directly. Use actual numbers from context. When the user has large savings, explain the corpus split first and then the monthly split. Do not invent a precise rupee split unless the strategy provides a range or exact backend fact. If the timeline is unknown, say that it affects the house strategy. If the amount is the user's total savings, explicitly say that the full corpus is allocated across the listed buckets. For stock-related queries, use live stock data when available and include price plus percentage change where relevant.  Use this exact structure: Priority:, Capital Allocation:, Monthly Plan:, Stock Suggestions:, What Not To Do:. You must answer every intent in the query. Do not mention backend, strategy object, prompt rules, or templates.
+
+--- RAW RESPONSE ---
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Since the timeline for buying a house is unknown, it's essential to prioritize and separate your funds by goal and timeline.
+
+Capital Allocation: The full allocation of your Rs3,200,000 savings is covered as follows: Rs600,000 is treated as an emergency reserve, and from the remaining Rs2,600,000, roughly Rs2,000,000-2,200,000 will be kept in safe assets for the house fund. The remaining amount, roughly Rs400,000-600,000, can be allocated for long-term investing, considering your medium risk profile.
+
+Monthly Plan: From your monthly surplus of Rs300,000, direct about Rs150,000-200,000 to the house fund. Additionally, run SIPs of about Rs100,000-150,000 per month into index or hybrid funds for long-term goals, including buying a car.
+
+Stock Suggestions: For long-term investing, you can consider SIPs in Nifty 50 index funds and hybrid funds. However, since the timeline for buying a house is unknown, it's crucial to maintain a conservative approach and avoid aggressive equity exposure.
+
+What Not
+
+=== RETRY 1 ===
+
+--- USER PROMPT ---
+User question:
+If i had to purchase a car with the house goal what should i do?
+
+Current response:
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Since the timeline for buying a house is unknown, it's essential to prioritize and separate your funds by goal and timeline.
+
+Capital Allocation: The full allocation of your Rs3,200,000 savings is covered as follows: Rs600,000 is treated as an emergency reserve, and from the remaining Rs2,600,000, roughly Rs2,000,000-2,200,000 will be kept in safe assets for the house fund. The remaining amount, roughly Rs400,000-600,000, can be allocated for long-term investing, considering your medium risk profile.
+
+Monthly Plan: From your monthly surplus of Rs300,000, direct about Rs150,000-200,000 to the house fund. Additionally, run SIPs of about Rs100,000-150,000 per month into index or hybrid funds for long-term goals, including buying a car.
+
+Stock Suggestions: For long-term investing, you can consider SIPs in Nifty 50 index funds and hybrid funds. However, since the timeline for buying a house is unknown, it's crucial to maintain a conservative approach and avoid aggressive equity exposure.
+
+What Not
+
+Critical issues:
+- Response contradicts strategy constraint: Do not use short-horizon house money for aggressive equity exposure.
+Soft issues:
+- Include a What Not To Do section.
+- Stock Suggestions should state that direct stocks are only a limited part of the portfolio.
+
+Deterministic strategy:
+- Primary priority: protect house capital and separate it from long-term investing
+- Secondary priority: use existing savings first, then build the down-payment stream
+- Capital allocation: Treat Rs600,000 from the current savings corpus as the emergency reserve; this is part of the existing savings, not extra money.
+- Capital allocation: From the remaining Rs2,600,000, keep roughly Rs2,000,000-2,200,000 in safe assets for the house fund.
+- Capital allocation: Limit long-term investing to roughly Rs400,000-600,000 from savings until the house timeline and budget are clear.
+- Monthly plan: From monthly surplus, direct about Rs150,000-200,000 to the house fund.
+- Monthly plan: Run SIPs of about Rs100,000-150,000 per month into index or hybrid funds for long-term goals.
+- Monthly plan: Clarify the target purchase timeline and house budget before increasing equity exposure.
+- Constraint: Do not use short-horizon house money for aggressive equity exposure.
+- Warning: Generic SIP-first advice is wrong when large savings already exist for a house goal.
+- Warning: House timeline is not clear, so the default stance should stay conservative.
+- SIP guidance: SIP range: Rs100,000-150,000 per month in Nifty 50 index funds and hybrid funds.
+- Fact: Monthly income is Rs400,000 and expenses are Rs100,000.
+- Fact: Current savings are Rs3,200,000 with monthly surplus Rs300,000.
+- Fact: Emergency fund target is Rs600,000 and current gap is Rs0.
+- Fact: Primary goal is buy a house with unknown horizon.
+- Fact: User asked a compound query covering: multi_goal_planning, goal_planning.
+
+Improve this response by fixing the listed issues. Do not rewrite everything from scratch unless necessary. Keep the parts that are already correct.  Use this exact structure: Priority:, Capital Allocation:, Monthly Plan:, Stock Suggestions:, What Not To Do:. You must answer every intent in the query. Use only the provided numbers and stay within 100-180 words.
+
+--- RAW RETRY RESPONSE ---
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Given the unknown timeline for buying a house, prioritize and separate funds by goal and timeline.
+
+Capital Allocation: Allocate Rs600,000 as an emergency reserve, then use Rs2,000,000-2,200,000 from the remaining Rs2,600,000 for the house fund. Allocate Rs400,000-600,000 for long-term investing.
+
+Monthly Plan: Direct Rs150,000-200,000 from your Rs300,000 monthly surplus to the house fund. Run SIPs of Rs100,000-150,000 in index or hybrid funds for long-term goals, including buying a car.
+
+Stock Suggestions: Consider SIPs in Nifty 50 index funds and hybrid funds. Direct stocks, like HDFC Bank or Infosys, should be a limited part of your portfolio.
+
+What Not To Do: Avoid using house fund money for aggressive equity exposure or buying a car until the house timeline and budget are clear.
+
+=== RETRY 2 ===
+
+--- USER PROMPT ---
+User question:
+If i had to purchase a car with the house goal what should i do?
+
+Current response:
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Given the unknown timeline for buying a house, prioritize and separate funds by goal and timeline.
+
+Capital Allocation: Allocate Rs600,000 as an emergency reserve, then use Rs2,000,000-2,200,000 from the remaining Rs2,600,000 for the house fund. Allocate Rs400,000-600,000 for long-term investing.
+
+Monthly Plan: Direct Rs150,000-200,000 from your Rs300,000 monthly surplus to the house fund. Run SIPs of Rs100,000-150,000 in index or hybrid funds for long-term goals, including buying a car.
+
+Stock Suggestions: Consider SIPs in Nifty 50 index funds and hybrid funds. Direct stocks, like HDFC Bank or Infosys, should be a limited part of your portfolio.
+
+What Not To Do: Avoid using house fund money for aggressive equity exposure or buying a car until the house timeline and budget are clear.
+
+Critical issues:
+- Response contradicts strategy constraint: Do not use short-horizon house money for aggressive equity exposure.
+Soft issues:
+- House planning with large savings must explicitly use the existing savings corpus.
+- Stock Suggestions should state that direct stocks are only a limited part of the portfolio.
+
+Deterministic strategy:
+- Primary priority: protect house capital and separate it from long-term investing
+- Secondary priority: use existing savings first, then build the down-payment stream
+- Capital allocation: Treat Rs600,000 from the current savings corpus as the emergency reserve; this is part of the existing savings, not extra money.
+- Capital allocation: From the remaining Rs2,600,000, keep roughly Rs2,000,000-2,200,000 in safe assets for the house fund.
+- Capital allocation: Limit long-term investing to roughly Rs400,000-600,000 from savings until the house timeline and budget are clear.
+- Monthly plan: From monthly surplus, direct about Rs150,000-200,000 to the house fund.
+- Monthly plan: Run SIPs of about Rs100,000-150,000 per month into index or hybrid funds for long-term goals.
+- Monthly plan: Clarify the target purchase timeline and house budget before increasing equity exposure.
+- Constraint: Do not use short-horizon house money for aggressive equity exposure.
+- Warning: Generic SIP-first advice is wrong when large savings already exist for a house goal.
+- Warning: House timeline is not clear, so the default stance should stay conservative.
+- SIP guidance: SIP range: Rs100,000-150,000 per month in Nifty 50 index funds and hybrid funds.
+- Fact: Monthly income is Rs400,000 and expenses are Rs100,000.
+- Fact: Current savings are Rs3,200,000 with monthly surplus Rs300,000.
+- Fact: Emergency fund target is Rs600,000 and current gap is Rs0.
+- Fact: Primary goal is buy a house with unknown horizon.
+- Fact: User asked a compound query covering: multi_goal_planning, goal_planning.
+
+Improve this response by fixing the listed issues. Do not rewrite everything from scratch unless necessary. Keep the parts that are already correct.  Use this exact structure: Priority:, Capital Allocation:, Monthly Plan:, Stock Suggestions:, What Not To Do:. You must answer every intent in the query. Use only the provided numbers and stay within 100-180 words.
+
+--- RAW RETRY RESPONSE ---
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Given the unknown timeline for buying a house, prioritize and separate funds by goal and timeline.
+
+Capital Allocation: Allocate Rs600,000 from the Rs3,200,000 savings as an emergency reserve. Use Rs2,000,000-2,200,000 for the house fund, and Rs400,000-600,000 for long-term investing, including the car goal.
+
+Monthly Plan: Direct Rs150,000-200,000 from your Rs300,000 monthly surplus to the house fund. Run SIPs of Rs100,000-150,000 in index or hybrid funds for long-term goals.
+
+Stock Suggestions: Consider SIPs in Nifty 50 index funds and hybrid funds, with direct stocks like HDFC Bank or Infosys as a limited part of your portfolio.
+
+What Not To Do: Avoid using house fund money for aggressive equity exposure or buying a car until the house timeline and budget are clear.
+
+--- CLEANED ---
+Priority: Your primary goal is to buy a house, and you also want to purchase a car. Given the unknown timeline for buying a house, prioritize and separate funds by goal and timeline.
+
+Capital Allocation: Allocate Rs600,000 from the Rs3,200,000 savings as an emergency reserve. Use Rs2,000,000-2,200,000 for the house fund, and Rs400,000-600,000 for long-term investing, including the car goal.
+
+Monthly Plan: Direct Rs150,000-200,000 from your Rs300,000 monthly surplus to the house fund. Run SIPs of Rs100,000-150,000 in index or hybrid funds for long-term goals.
+
+Stock Suggestions: Consider SIPs in Nifty 50 index funds and hybrid funds, with direct stocks like HDFC Bank or Infosys as a limited part of your portfolio.
+
+What Not To Do: Avoid using house fund money for aggressive equity exposure or buying a car until the house timeline and budget are clear.
