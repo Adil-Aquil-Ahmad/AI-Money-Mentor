@@ -6,9 +6,86 @@ Chrysos is an advanced, personalized, and privacy-first AI financial advisor app
 
 Privacy is a core pillar of Chrysos. The system employs End-to-End Encryption (E2EE) for user data, ensuring that personal financial information is decrypted locally on the device and only transmitted to the backend as transient payloads for processing without being permanently stored in plain text.
 
+## The Problem Chrysos Solves
+
+Most people don’t fail at investing because they lack motivation — they fail because the workflow is fragmented and cognitively expensive:
+
+- Portfolio data lives in one place, market context in another, and advice somewhere else.
+- Decisions are made with incomplete context (allocation drift, risk exposure, cash-flow constraints, and recent news are rarely evaluated together).
+- Generic advice ignores personal constraints (SIP capacity, time horizon, liquidity needs, and asset mix).
+- Privacy concerns prevent users from sharing their real portfolio with “AI advisors”, forcing them into toy examples.
+
+Chrysos solves this by unifying **portfolio tracking + market intelligence + personalized reasoning** into a single, privacy-first assistant. It aims to make financial guidance:
+
+- **Context-aware**: grounded in the user’s actual holdings and allocation.
+- **Actionable**: produces clear next steps (not just explanations).
+- **Fast and cost-aware**: routes work to the smallest capable model.
+- **Privacy-first by design**: sensitive details stay local and encrypted.
+
+## Architecture Vision (What We’re Building Toward)
+
+Chrysos is designed as a hybrid, privacy-preserving “reasoning system” rather than a single chatbot.
+
+**Core design principles**
+
+- **Offline-first planning**: the first pass (intent parsing + task decomposition) can run on-device to minimize latency and protect raw user prompts.
+- **Model routing as a product primitive**: complexity determines which model runs each step, so we pay heavyweight costs only when it truly matters.
+- **Separation of concerns**: UI/UX (Flutter), orchestration + policy (FastAPI), and financial/LLM logic (engine) are modular and testable.
+- **Graceful degradation**: if APIs/models are unavailable, the system falls back to deterministic logic and cached/partial results.
+- **Security boundaries**: user secrets and decrypted portfolio details should never be persistently stored server-side.
+
 ## Core Features and AI Strategy
 
 The cornerstone of the Chrysos intelligence is its Multi-Tier LLM Routing System. Instead of relying on a single monolithic model for every request, Chrysos decomposes tasks and routes them to the most appropriate model based on complexity, cost, and latency requirements.
+
+## Technical Depth & Architecture (Judge-Focused)
+
+This project’s “AI” is not a single model call — it’s an orchestrated pipeline with explicit routing, tool-usage, and financial-domain responsibilities.
+
+### 1) Multi-Stage Reasoning Pipeline
+
+The backend is structured so that a user query can be transformed into:
+
+1. **Intent → tasks** (planner)
+2. **Tasks → tool calls** (market data fetch, portfolio metrics)
+3. **Evidence → synthesis** (final response)
+
+This architecture enables:
+
+- **Latency control**: fast models handle most work; heavy models are reserved for synthesis.
+- **Cost control**: expensive inference is minimized.
+- **Better reliability**: deterministic steps (math/formatting) are not delegated to LLMs.
+
+### 2) Privacy-First Data Handling
+
+- The system is built around a principle that sensitive portfolio context can be decrypted locally and sent to the backend only as **transient payloads**.
+- The backend focuses on computation and reasoning, not long-term storage of plaintext sensitive data.
+
+### 3) Financial Domain Computing (Not Just Chat)
+
+Chrysos treats the user’s holdings as a dataset and computes:
+
+- Portfolio totals (invested value, current value)
+- Allocation by asset class
+- SIP totals and forward projections
+- P&L framing that can be used by other experiences (e.g., “Morning Brief”)
+
+### 4) Resilience & Fallbacks
+
+The portfolio UI supports:
+
+- Live backend portfolio snapshots
+- Local demo/fallback data when the backend is unavailable
+
+This matters in hackathon settings and real-world networks: the experience remains usable even under partial failure.
+
+### 5) Extensibility (Why This Scales Beyond a Demo)
+
+The codebase layout (routes → screens/services on Flutter, routers → engine/services on FastAPI) is designed so new capabilities can be added by:
+
+- Adding a backend router + a corresponding engine capability
+- Exposing a clean API contract
+- Adding a frontend screen or component that consumes it
 
 ### The Multi-Tier Model Pipeline
 
@@ -31,6 +108,26 @@ The cornerstone of the Chrysos intelligence is its Multi-Tier LLM Routing System
    - **Model**: LLaMA 3.3 70B (via Groq)
    - **Role**: Reserved for complex synthesis and deep analysis. It handles tasks such as sentiment analysis on market news (e.g., determining if recent headlines about a stock are bullish or bearish) and formulating the final, comprehensive response to the user.
    - **Advantage**: Superior reasoning, nuance detection, and high-quality natural language generation.
+
+## Real Business Impact
+
+Chrysos is built for outcomes that matter to real users (and to any fintech product):
+
+- **Reduces decision friction**: users don’t need to manually assemble context from multiple apps and websites.
+- **Improves clarity and confidence**: allocation, SIP contributions, and projections are presented alongside an advisor that can explain “why” in plain language.
+- **Creates a repeatable habit loop**: portfolio tracking + morning-style briefings + conversational Q&A supports consistent financial hygiene.
+- **Privacy as a differentiator**: E2EE-first handling makes it feasible to use real portfolio data, which is essential for personalization.
+
+In a production setting, these translate into measurable product metrics (activation, retention, portfolio engagement) and reduced support burden (fewer “what should I do?” dead-ends).
+
+## Innovation
+
+What’s novel here is the combination of multiple hard things into a coherent system:
+
+- **Hybrid on-device + backend AI**: local planning (privacy + speed) paired with cloud synthesis (quality) when needed.
+- **Model routing as a first-class feature**: systematically picks the right model per task instead of “always call the biggest model”.
+- **Tool-augmented reasoning for finance**: deterministic computation and live market data are treated as evidence for LLM synthesis.
+- **Privacy-first product architecture**: sensitive context is designed to stay encrypted and ephemeral.
 
 ## Codebase Architecture
 

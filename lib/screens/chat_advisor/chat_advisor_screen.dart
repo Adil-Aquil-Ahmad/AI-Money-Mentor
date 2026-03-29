@@ -24,7 +24,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   String? _selectedDropdownValue;
   String _errorMessage = '';
   bool _backendConnected = false;
-  bool _disposed = false; // manual flag – more reliable than mounted getter
+  bool _disposed = false;
 
   final List<String> _predefinedQuestions = [
     'What is my current financial health?',
@@ -40,7 +40,6 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     super.initState();
     _messageController = TextEditingController();
     _scrollController = ScrollController();
-    // Start with a static greeting immediately
     messages = [
       Message(
         id: 'init',
@@ -48,7 +47,6 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
         text: "Hello! I'm Chrysos. Loading your portfolio update...",
       ),
     ];
-    // Check backend + load greeting after first frame so widget is fully mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_disposed) return;
       _checkBackendConnection();
@@ -85,11 +83,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
       setState(() {
         final idx = messages.indexWhere((m) => m.id == 'init');
         if (idx >= 0) {
-          messages[idx] = Message(
-            id: 'init',
-            role: 'advisor',
-            text: greetingText,
-          );
+          messages[idx] = Message(id: 'init', role: 'advisor', text: greetingText);
         }
       });
     } catch (_) {
@@ -109,7 +103,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
 
   @override
   void dispose() {
-    _disposed = true; // set before calling super so pending futures bail out
+    _disposed = true;
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -159,7 +153,6 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     _scrollToBottom();
 
     try {
-      // 1. Fetch Encrypted Profile
       Map<String, dynamic> rawProfile = {};
       try {
         rawProfile = await apiService.get<Map<String, dynamic>>(
@@ -168,7 +161,6 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
         );
       } catch (_) {}
 
-      // 2. Decrypt it to a transient memory dictionary
       final transientProfile = <String, dynamic>{};
       
       Future<void> decryptField(String key, dynamic fallback) async {
@@ -192,11 +184,10 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
       await decryptField('emergency_fund_months', 0);
       await decryptField('has_insurance', 'false');
 
-      // 3. Call backend API with the Transient Profile
       final response = await apiService.post<ChatMessageResponse>(
-        '/chat', // Fixed endpoint to match FastAPI @router.post("/chat")
+        '/chat',
         body: ChatMessageRequest(
-          userId: 'user_123', // TODO: Replace with actual user ID
+          userId: 'user_123',
           message: messageText,
           transientProfile: transientProfile,
         ).toJson(),
@@ -233,7 +224,6 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     _scrollToBottom();
   }
 
-
   void _clearChat() {
     setState(() {
       messages = [
@@ -255,6 +245,9 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
 
     return Column(
       children: [
@@ -299,20 +292,20 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: AppColors.whiteOpacity(0.2),
+                    color: AppColors.getBorder(isDark, 0.2),
                     width: 1.5,
                   ),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppColors.whiteOpacity(0.1),
-                      AppColors.whiteOpacity(0.05),
+                      AppColors.getOverlay(isDark, 0.1),
+                      AppColors.getOverlay(isDark, 0.05),
                     ],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: brandPrimary.withOpacity(0.2),
                       blurRadius: 30,
                       spreadRadius: 1,
                     ),
@@ -328,14 +321,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                             children: [
                               ShaderMask(
                                 shaderCallback: (bounds) => LinearGradient(
-                                  colors: [Colors.white, AppColors.primary],
+                                  colors: [AppColors.getTextPrimary(isDark), brandPrimary],
                                 ).createShader(bounds),
-                                child: const Text(
+                                child: Text(
                                   'Chrysos',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: AppColors.getTextPrimary(isDark),
                                     letterSpacing: -0.5,
                                   ),
                                 ),
@@ -353,11 +346,11 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Personalized financial advice',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.textTertiary,
+                              color: AppColors.getTextTertiary(isDark),
                               letterSpacing: 0.2,
                             ),
                           ),
@@ -371,10 +364,10 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: AppColors.primary.withOpacity(0.3),
+                                        color: brandPrimary.withOpacity(0.3),
                                         width: 1.5,
                                       ),
-                                      color: AppColors.primary.withOpacity(0.1),
+                                      color: brandPrimary.withOpacity(0.1),
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
@@ -383,17 +376,17 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.refresh,
                                           size: 14,
-                                          color: AppColors.primary,
+                                          color: brandPrimary,
                                         ),
                                         const SizedBox(width: 6),
-                                        const Text(
+                                        Text(
                                           'Clear',
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: AppColors.primary,
+                                            color: brandPrimary,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -410,10 +403,10 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: AppColors.primary.withOpacity(0.3),
+                                        color: brandPrimary.withOpacity(0.3),
                                         width: 1.5,
                                       ),
-                                      color: AppColors.primary.withOpacity(0.1),
+                                      color: brandPrimary.withOpacity(0.1),
                                     ),
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 8,
@@ -427,16 +420,16 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                               ? Icons.list
                                               : Icons.edit,
                                           size: 14,
-                                          color: AppColors.primary,
+                                          color: brandPrimary,
                                         ),
                                         const SizedBox(width: 6),
                                         Text(
                                           _inputMode == 'dropdown'
                                               ? 'Quick'
                                               : 'Type',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11,
-                                            color: AppColors.primary,
+                                            color: brandPrimary,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -458,24 +451,24 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                               children: [
                                 ShaderMask(
                                   shaderCallback: (bounds) => LinearGradient(
-                                    colors: [Colors.white, AppColors.primary],
+                                    colors: [AppColors.getTextPrimary(isDark), brandPrimary],
                                   ).createShader(bounds),
-                                  child: const Text(
+                                  child: Text(
                                     'Chrysos',
                                     style: TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: AppColors.getTextPrimary(isDark),
                                       letterSpacing: -0.5,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
+                                Text(
                                   'Personalized, data-driven financial advice',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: AppColors.textTertiary,
+                                    color: AppColors.getTextTertiary(isDark),
                                     letterSpacing: 0.2,
                                   ),
                                 ),
@@ -504,25 +497,21 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: brandPrimary.withOpacity(0.3),
                                   width: 1.5,
                                 ),
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: brandPrimary.withOpacity(0.1),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(
-                                    Icons.refresh,
-                                    size: 18,
-                                    color: AppColors.primary,
-                                  ),
+                                  Icon(Icons.refresh, size: 18, color: brandPrimary),
                                   const SizedBox(width: 8),
-                                  const Text(
+                                  Text(
                                     'Clear',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.primary,
+                                      color: brandPrimary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -541,10 +530,10 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: brandPrimary.withOpacity(0.3),
                                   width: 1.5,
                                 ),
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: brandPrimary.withOpacity(0.1),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -554,16 +543,16 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                         ? Icons.list
                                         : Icons.edit,
                                     size: 18,
-                                    color: AppColors.primary,
+                                    color: brandPrimary,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     _inputMode == 'dropdown'
                                         ? 'Quick Ask'
                                         : 'Free Type',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.primary,
+                                      color: brandPrimary,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -605,7 +594,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
               horizontal: isMobile ? 12 : 16,
               vertical: isMobile ? 8 : 12,
             ),
-            backgroundColor: AppColors.background.withOpacity(0.6),
+            backgroundColor: AppColors.getBackground(isDark).withOpacity(0.6),
             blurAmount: 120,
             child: _inputMode == 'free'
                 ? Row(
@@ -614,7 +603,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                         child: TextField(
                           controller: _messageController,
                           style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: AppColors.getTextPrimary(isDark),
                             fontSize: isMobile ? 14 : 16,
                             fontWeight: FontWeight.w400,
                           ),
@@ -627,7 +616,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                     : 'Ask about your portfolio, a specific stock...')
                                 : 'Backend not connected...',
                             hintStyle: TextStyle(
-                              color: AppColors.textTertiary.withOpacity(0.7),
+                              color: AppColors.getTextTertiary(isDark).withOpacity(0.7),
                               fontSize: isMobile ? 12 : 14,
                             ),
                             border: InputBorder.none,
@@ -645,14 +634,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                           height: isMobile ? 40 : 48,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              colors: AppColors.primaryGradient,
+                            gradient: LinearGradient(
+                              colors: brandGradient,
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.5),
+                                color: brandPrimary.withOpacity(0.5),
                                 blurRadius: 20,
                                 spreadRadius: 2,
                               ),
@@ -681,7 +670,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: isMobile ? 12 : 14,
-                                  color: AppColors.textPrimary,
+                                  color: AppColors.getTextPrimary(isDark),
                                 ),
                               ),
                             );
@@ -696,7 +685,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                           decoration: InputDecoration(
                             hintText: 'Select a question',
                             hintStyle: TextStyle(
-                              color: AppColors.textTertiary.withOpacity(0.7),
+                              color: AppColors.getTextTertiary(isDark).withOpacity(0.7),
                               fontSize: isMobile ? 12 : 14,
                             ),
                             border: InputBorder.none,
@@ -707,13 +696,13 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                             filled: false,
                           ),
                           style: TextStyle(
-                            color: AppColors.textPrimary,
+                            color: AppColors.getTextPrimary(isDark),
                             fontSize: isMobile ? 14 : 16,
                           ),
-                          dropdownColor: Color(0xFF153C6A),
+                          dropdownColor: AppColors.getDropdownBg(isDark),
                           icon: Icon(
                             Icons.arrow_drop_down,
-                            color: AppColors.primary,
+                            color: brandPrimary,
                             size: isMobile ? 18 : 20,
                           ),
                         ),
@@ -726,14 +715,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                           height: isMobile ? 40 : 48,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              colors: AppColors.primaryGradient,
+                            gradient: LinearGradient(
+                              colors: brandGradient,
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.5),
+                                color: brandPrimary.withOpacity(0.5),
                                 blurRadius: 20,
                                 spreadRadius: 2,
                               ),
@@ -757,6 +746,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   Widget _buildMessageBubble(Message message) {
     final isUser = message.role == 'user';
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final avatarSize = isMobile ? 32.0 : 40.0;
     final avatarIconSize = isMobile ? 16.0 : 20.0;
     final bubblePadding = isMobile
@@ -764,6 +754,11 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
         : const EdgeInsets.symmetric(horizontal: 18, vertical: 14);
     final bubbleRadius = isMobile ? 16.0 : 20.0;
     final textSize = isMobile ? 13.0 : 15.0;
+
+    final brandGradient = AppColors.getBrandGradient(isDark);
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final secondaryGradient = AppColors.getSecondaryGradient(isDark);
+    final brandSecondary = AppColors.getBrandSecondary(isDark);
 
     return Padding(
       padding: EdgeInsets.only(bottom: isMobile ? 12 : 16),
@@ -778,14 +773,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
               margin: EdgeInsets.only(right: isMobile ? 8 : 12),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: AppColors.primaryGradient,
+                gradient: LinearGradient(
+                  colors: brandGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
+                    color: brandPrimary.withOpacity(0.4),
                     blurRadius: 15,
                     spreadRadius: 1,
                   ),
@@ -802,17 +797,17 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
               borderRadius: bubbleRadius,
               padding: bubblePadding,
               backgroundColor: isUser
-                  ? Color(0xFF733E85).withOpacity(0.15)
-                  : Color(0xFF153C6A).withOpacity(0.2),
+                  ? (isDark ? const Color(0xFF733E85).withOpacity(0.15) : brandSecondary.withOpacity(0.10))
+                  : (isDark ? const Color(0xFF153C6A).withOpacity(0.2) : brandPrimary.withOpacity(0.08)),
               blurAmount: 120,
               glowColor: isUser
-                  ? const Color(0xFFE977F5)
-                  : AppColors.primary,
+                  ? brandSecondary
+                  : brandPrimary,
               child: message.text.contains('Chrysos')
                   ? Text.rich(
                       TextSpan(
                         children: _buildChrysosSpans(
-                            message.text, textSize, AppColors.textSecondary),
+                            message.text, textSize, AppColors.getTextSecondary(isDark)),
                       ),
                       style: const TextStyle(
                         height: 1.6,
@@ -823,7 +818,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                       message.text,
                       style: TextStyle(
                         fontSize: textSize,
-                        color: AppColors.textSecondary,
+                        color: AppColors.getTextSecondary(isDark),
                         height: 1.6,
                         fontWeight: FontWeight.w400,
                       ),
@@ -837,14 +832,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
               margin: EdgeInsets.only(left: isMobile ? 8 : 12),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFE977F5), Color(0xFF733E85)],
+                gradient: LinearGradient(
+                  colors: secondaryGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFE977F5).withOpacity(0.4),
+                    color: brandSecondary.withOpacity(0.4),
                     blurRadius: 15,
                     spreadRadius: 1,
                   ),
@@ -863,8 +858,11 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
 
   Widget _buildTypingIndicator() {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final avatarSize = isMobile ? 32.0 : 40.0;
     final avatarIconSize = isMobile ? 16.0 : 20.0;
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
 
     return Padding(
       padding: EdgeInsets.only(bottom: isMobile ? 12 : 16),
@@ -877,14 +875,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
             margin: EdgeInsets.only(right: isMobile ? 8 : 12),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: AppColors.primaryGradient,
+              gradient: LinearGradient(
+                colors: brandGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
+                  color: brandPrimary.withOpacity(0.4),
                   blurRadius: 15,
                   spreadRadius: 1,
                 ),
@@ -901,7 +899,9 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
             padding: isMobile
                 ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
                 : const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            backgroundColor: Color(0xFF153C6A).withOpacity(0.2),
+            backgroundColor: isDark
+                ? const Color(0xFF153C6A).withOpacity(0.2)
+                : brandPrimary.withOpacity(0.08),
             blurAmount: 120,
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -920,25 +920,26 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   }
 
   Widget _buildDot(int delay) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 1000),
-      onEnd: () {
-        // Restart animation
-      },
+      onEnd: () {},
       builder: (context, value, child) {
         return Container(
           width: 8,
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color:
-                AppColors.primary.withOpacity((value * 0.8).toDouble()),
+            color: brandPrimary.withOpacity((value * 0.8).toDouble()),
           ),
         );
       },
     );
   }
+
   List<TextSpan> _buildChrysosSpans(String text, double textSize, Color baseColor) {
     if (!text.contains('Chrysos')) {
       return [TextSpan(text: text, style: TextStyle(fontSize: textSize, color: baseColor))];

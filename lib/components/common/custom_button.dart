@@ -55,6 +55,8 @@ class _CustomButtonState extends State<CustomButton>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       width: widget.width,
       height: widget.height,
@@ -72,7 +74,7 @@ class _CustomButtonState extends State<CustomButton>
                 return Transform.scale(
                   scale: _scaleAnimation.value,
                   child: Container(
-                    decoration: _buildDecoration(),
+                    decoration: _buildDecoration(isDark),
                     child: Center(
                       child: widget.isLoading
                           ? const SizedBox(
@@ -95,7 +97,7 @@ class _CustomButtonState extends State<CustomButton>
                                 ],
                                 Text(
                                   widget.text,
-                                  style: _buildTextStyle(),
+                                  style: _buildTextStyle(isDark),
                                 ),
                                 if (widget.trailingIcon != null) ...[
                                   const SizedBox(width: 8),
@@ -114,25 +116,29 @@ class _CustomButtonState extends State<CustomButton>
     );
   }
 
-  BoxDecoration _buildDecoration() {
+  BoxDecoration _buildDecoration(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
+    final secondaryGradient = AppColors.getSecondaryGradient(isDark);
+
     switch (widget.type) {
       case ButtonType.primary:
         return BoxDecoration(
           borderRadius: BorderRadius.circular(widget.height / 2),
-          gradient: const LinearGradient(
-            colors: AppColors.primaryGradient,
+          gradient: LinearGradient(
+            colors: brandGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.6),
+              color: brandPrimary.withOpacity(0.5),
               blurRadius: 30,
               spreadRadius: 2,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -141,20 +147,20 @@ class _CustomButtonState extends State<CustomButton>
       case ButtonType.secondary:
         return BoxDecoration(
           borderRadius: BorderRadius.circular(widget.height / 2),
-          gradient: const LinearGradient(
-            colors: AppColors.secondaryGradient,
+          gradient: LinearGradient(
+            colors: secondaryGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.secondary.withOpacity(0.6),
+              color: AppColors.getBrandSecondary(isDark).withOpacity(0.5),
               blurRadius: 30,
               spreadRadius: 2,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
@@ -164,13 +170,13 @@ class _CustomButtonState extends State<CustomButton>
         return BoxDecoration(
           borderRadius: BorderRadius.circular(widget.height / 2),
           border: Border.all(
-            color: AppColors.primary.withOpacity(0.5),
+            color: brandPrimary.withOpacity(0.5),
             width: 2,
           ),
-          color: AppColors.primary.withOpacity(0.1),
+          color: brandPrimary.withOpacity(0.1),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.2),
+              color: brandPrimary.withOpacity(0.2),
               blurRadius: 15,
               offset: const Offset(0, 4),
             ),
@@ -184,7 +190,9 @@ class _CustomButtonState extends State<CustomButton>
     }
   }
 
-  TextStyle _buildTextStyle() {
+  TextStyle _buildTextStyle(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    
     switch (widget.type) {
       case ButtonType.primary:
       case ButtonType.secondary:
@@ -196,8 +204,8 @@ class _CustomButtonState extends State<CustomButton>
         );
       case ButtonType.outlined:
       case ButtonType.text:
-        return const TextStyle(
-          color: AppColors.primary,
+        return TextStyle(
+          color: brandPrimary,
           fontSize: 16,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,

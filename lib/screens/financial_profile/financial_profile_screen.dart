@@ -476,11 +476,15 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
           ),
         ),
         // Save and Actions Section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             // Left side actions (Theme + Logout)
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 GestureDetector(
                   onTap: () => AppTheme.toggleTheme(),
@@ -492,6 +496,7 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
                       border: Border.all(color: AppColors.getBorder(isDark, 0.1)),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                             color: AppColors.getTextPrimary(isDark), size: 18),
@@ -514,11 +519,12 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFF87171).withOpacity(0.3)),
                     ),
-                    child: Row(
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.logout, color: Color(0xFFF87171), size: 18),
-                        const SizedBox(width: 8),
-                        const Text('Logout',
+                        Icon(Icons.logout, color: Color(0xFFF87171), size: 18),
+                        SizedBox(width: 8),
+                        Text('Logout',
                             style: TextStyle(
                                 color: Color(0xFFF87171),
                                 fontWeight: FontWeight.bold)),

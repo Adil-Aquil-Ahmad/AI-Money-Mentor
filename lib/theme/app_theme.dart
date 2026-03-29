@@ -84,10 +84,27 @@ class AppTheme {
       fontFamily: GoogleFonts.outfit().fontFamily,
       colorScheme: const ColorScheme.light(
         primary: AppColors.lightPrimary,
+        onPrimary: Colors.white,
         secondary: AppColors.lightSecondary,
+        onSecondary: Colors.white,
         surface: AppColors.lightSurfaceColor,
+        onSurface: AppColors.lightTextPrimary,
         error: AppColors.error,
         brightness: Brightness.light,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.lightPrimary;
+          }
+          return AppColors.lightTextTertiary;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.lightPrimary.withOpacity(0.3);
+          }
+          return AppColors.lightTextTertiary.withOpacity(0.2);
+        }),
       ),
       textTheme: TextTheme(
         displayLarge: GoogleFonts.outfit(

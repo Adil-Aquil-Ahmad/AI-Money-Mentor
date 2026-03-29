@@ -22,7 +22,7 @@ class GlassCard extends StatefulWidget {
     this.isHoverable = true,
     this.animationDuration = const Duration(milliseconds: 300),
     this.backgroundColor,
-    this.blurAmount = 20, // Reduced from 150 to a sane backdrop blur level
+    this.blurAmount = 20,
     this.glowColor,
   }) : super(key: key);
 
@@ -87,12 +87,11 @@ class _GlassCardState extends State<GlassCard>
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(widget.borderRadius),
-                  // A very subtle baseline shadow instead of heavy glowing fog
                   boxShadow: [
                     BoxShadow(
                       color: isDark 
                           ? Colors.black.withOpacity(0.2) 
-                          : const Color(0xFF042142).withOpacity(0.05),
+                          : const Color(0xFFC5960C).withOpacity(0.06),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -121,7 +120,7 @@ class _GlassCardState extends State<GlassCard>
                       ),
                       child: Stack(
                         children: [
-                          // Optional internal masked glow (matches HTML pointer-events-none approach)
+                          // Optional internal masked glow
                           if (widget.glowColor != null && isDark)
                             Positioned(
                               top: -40,

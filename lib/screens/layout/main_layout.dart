@@ -44,13 +44,13 @@ class _MainLayoutState extends State<MainLayout> {
     NavItem(label: 'What-If Simulator', icon: Icons.help_outline_rounded, index: 5),
   ];
 
-  final List<Widget> _screens = const [
-    ChatAdvisorScreen(),
-    FinancialProfileScreen(),
-    HealthScoreScreen(),
-    PortfolioTrackerScreen(),
-    FireCalculatorScreen(),
-    WhatIfSimulatorScreen(),
+  List<Widget> get _screens => [
+    const ChatAdvisorScreen(),
+    const FinancialProfileScreen(),
+    const HealthScoreScreen(),
+    PortfolioTrackerScreen(onNavigateToPage: _updatePage),
+    const FireCalculatorScreen(),
+    const WhatIfSimulatorScreen(),
   ];
 
   @override

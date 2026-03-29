@@ -447,11 +447,11 @@ class _HealthScoreScreenState extends State<HealthScoreScreen>
                                             child: Text(
                                               category.name,
                                               style:
-                                                  const TextStyle(
+                                                  TextStyle(
                                                 fontSize: 13,
                                                 fontWeight:
                                                     FontWeight.w600,
-                                                color: AppColors.textPrimary,
+                                                color: AppColors.getTextPrimary(isDark),
                                               ),
                                             ),
                                           ),
@@ -625,11 +625,11 @@ class _HealthScoreScreenState extends State<HealthScoreScreen>
                                               child: Text(
                                                 category.name,
                                                 style:
-                                                    const TextStyle(
+                                                    TextStyle(
                                                   fontSize: 14,
                                                   fontWeight:
                                                       FontWeight.w600,
-                                                color: AppColors.textPrimary,
+                                                color: AppColors.getTextPrimary(isDark),
                                                 ),
                                               ),
                                             ),
@@ -878,7 +878,7 @@ class _HealthScoreScreenState extends State<HealthScoreScreen>
                 ),
               ),
             GlassCard(
-              backgroundColor: const Color(0xFF153C6A).withOpacity(0.3),
+              backgroundColor: (isDark ? const Color(0xFF153C6A) : AppColors.lightPrimary).withOpacity(isDark ? 0.3 : 0.06),
               padding: EdgeInsets.all(isMobile ? 16 : 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -65,8 +65,8 @@ class _CustomInputFieldState extends State<CustomInputField> {
               children: [
                 if (widget.prefixIcon != null) ...[
                   IconTheme(
-                    data: const IconThemeData(
-                      color: AppColors.primary,
+                    data: IconThemeData(
+                      color: AppColors.getBrandPrimary(isDark),
                       size: 18,
                     ),
                     child: widget.prefixIcon!,

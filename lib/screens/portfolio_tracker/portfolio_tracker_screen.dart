@@ -89,9 +89,14 @@ class Investment {
       );
 }
 
+// ─── Callback type for navigation ─────────────────────────────────────────────
+typedef NavigateToPageCallback = void Function(int pageIndex);
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 class PortfolioTrackerScreen extends StatefulWidget {
-  const PortfolioTrackerScreen({Key? key}) : super(key: key);
+  final NavigateToPageCallback? onNavigateToPage;
+
+  const PortfolioTrackerScreen({Key? key, this.onNavigateToPage}) : super(key: key);
 
   @override
   State<PortfolioTrackerScreen> createState() => _PortfolioTrackerScreenState();
@@ -99,7 +104,6 @@ class PortfolioTrackerScreen extends StatefulWidget {
 
 class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     with SingleTickerProviderStateMixin {
-  // Store theme flag so closures don't call Theme.of(context) after dispose
   bool isDark = false;
   bool _disposed = false;
 
@@ -107,13 +111,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   bool _isLoading = false;
   int? _touchedIndex;
 
-  // Data
   List<Investment> _investments = [];
   double _totalInvested = 0;
   double _currentValue = 0;
   List<Map<String, dynamic>> _allocation = [];
-
-  // Projection spots (for projections tab)
   List<FlSpot> _projectionSpots = [];
 
   @override
@@ -126,7 +127,6 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Safe place to read Theme — always called before build
     isDark = Theme.of(context).brightness == Brightness.dark;
   }
 
@@ -136,6 +136,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     _tabController.dispose();
     super.dispose();
   }
+
+
 
   // ─── API ───────────────────────────────────────────────────────────────────
 
@@ -168,13 +170,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
 
     final totalInv = (summary['total_invested'] as num?)?.toDouble() ?? 0;
     final curVal = (summary['current_value'] as num?)?.toDouble() ?? totalInv;
-    final sip = assets.fold<double>(
-        0, (s, e) => s + (e.sipAmount ?? 0));
+    final sip = assets.fold<double>(0, (s, e) => s + (e.sipAmount ?? 0));
 
-    PortfolioState.update(
-        invested: totalInv, value: curVal, sip: sip);
-
-    // Build projection spots
+    PortfolioState.update(invested: totalInv, value: curVal, sip: sip);
     final spots = _buildProjectionSpots(curVal, sip);
 
     if (_disposed || !mounted) return;
@@ -188,7 +186,6 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   void _loadFallback() {
-    // Use demo data so the screen is never blank
     final demo = [
       {'type': 'mutual_fund', 'name': 'Equity Mutual Funds', 'amount_invested': 650000.0, 'current_value': 720000.0, 'sip_amount': 15000.0, 'gain_loss_percent': 10.8},
       {'type': 'stock', 'name': 'Direct Stocks', 'amount_invested': 250000.0, 'current_value': 280000.0, 'gain_loss_percent': 12.0},
@@ -196,9 +193,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
       {'type': 'gold', 'name': 'Gold / SGBs', 'amount_invested': 150000.0, 'current_value': 163500.0, 'sip_amount': 3000.0, 'gain_loss_percent': 9.0},
       {'type': 'sip', 'name': 'EPF / PPF', 'amount_invested': 350000.0, 'current_value': 378000.0, 'sip_amount': 5000.0, 'gain_loss_percent': 8.0},
     ];
-    final investments = demo
-        .map((d) => Investment.fromJson(d as Map<String, dynamic>))
-        .toList();
+    final investments = demo.map((d) => Investment.fromJson(d)).toList();
     final totalInv = investments.fold<double>(0, (s, e) => s + e.amountInvested);
     final curVal = investments.fold<double>(0, (s, e) => s + e.currentValue);
     final sip = investments.fold<double>(0, (s, e) => s + (e.sipAmount ?? 0));
@@ -229,7 +224,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   List<FlSpot> _buildProjectionSpots(double base, double monthlySip) {
-    final rate = 0.105 / 12; // 10.5% blended annual → monthly
+    final rate = 0.105 / 12;
     double wealth = base;
     final spots = [FlSpot(0, base / 100000)];
     for (int y = 1; y <= 10; y++) {
@@ -242,14 +237,46 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   Future<void> _deleteInvestment(Investment inv) async {
-    if (inv.id == null) return;
-    try {
-      await apiService.delete('/investments/${inv.id}', requireAuth: false);
-      if (!_disposed && mounted) await _loadPortfolio();
-    } catch (_) {
-      if (_disposed || !mounted) return;
-      setState(() => _investments.remove(inv));
+    // Remove locally first for instant feedback
+    setState(() => _investments.remove(inv));
+    _recalcTotals();
+
+    if (inv.id != null) {
+      try {
+        await apiService.delete('/investments/${inv.id}', requireAuth: false);
+        if (!_disposed && mounted) await _loadPortfolio();
+      } catch (_) {
+        // Already removed locally, portfolio is updated
+      }
     }
+  }
+
+  void _recalcTotals() {
+    final totalInv = _investments.fold<double>(0, (s, e) => s + e.amountInvested);
+    final curVal = _investments.fold<double>(0, (s, e) => s + e.currentValue);
+    final sip = _investments.fold<double>(0, (s, e) => s + (e.sipAmount ?? 0));
+
+    PortfolioState.update(invested: totalInv, value: curVal, sip: sip);
+
+    final typeMap = <String, double>{};
+    for (final inv in _investments) {
+      typeMap[inv.type] = (typeMap[inv.type] ?? 0) + inv.currentValue;
+    }
+    final allocation = typeMap.entries
+        .map((e) => {
+              'type': e.key,
+              'value': e.value,
+              'allocation_percent': curVal > 0 ? (e.value / curVal) * 100 : 0.0,
+            })
+        .toList()
+      ..sort((a, b) => (b['value'] as double).compareTo(a['value'] as double));
+
+    setState(() {
+      _totalInvested = totalInv;
+      _currentValue = curVal;
+      _allocation = allocation;
+      _projectionSpots = _buildProjectionSpots(curVal, sip);
+    });
   }
 
   Future<void> _addInvestment(Map<String, dynamic> payload) async {
@@ -264,6 +291,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         'gain_loss_percent': 0.0,
       });
       setState(() => _investments.insert(0, localInv));
+      _recalcTotals();
     }
   }
 
@@ -280,12 +308,13 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
     final pad = isMobile ? 16.0 : 32.0;
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _loadPortfolio,
-        color: AppColors.primary,
+        color: brandPrimary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(pad, pad, pad, 120),
@@ -296,20 +325,17 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
               const SizedBox(height: 20),
               _buildSummaryBanner(isMobile),
               const SizedBox(height: 20),
-              // Tabs
               _buildTabBar(),
               const SizedBox(height: 20),
               if (_isLoading)
-                const Center(
+                Center(
                   child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(color: AppColors.primary),
+                    padding: const EdgeInsets.all(32),
+                    child: CircularProgressIndicator(color: brandPrimary),
                   ),
                 )
               else ...[
-                // Tab 0: Overview
                 if (_tabController.index == 0) _buildOverviewTab(isMobile),
-                // Tab 1: Projections
                 if (_tabController.index == 1) _buildProjectionsTab(),
               ],
             ],
@@ -322,6 +348,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   // ─── Header ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(bool isMobile) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -331,38 +359,38 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             children: [
               RichText(
                 text: TextSpan(
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppColors.getTextPrimary(isDark),
                   ),
                   children: [
                     const TextSpan(text: 'Portfolio '),
                     TextSpan(
                       text: 'Tracker',
-                      style: TextStyle(color: AppColors.getBrandPrimary(isDark)),
+                      style: TextStyle(color: brandPrimary),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Analyze, project, and align your investments with your goals.',
-                style: TextStyle(fontSize: 13, color: AppColors.textTertiary),
+                style: TextStyle(fontSize: 13, color: AppColors.getTextTertiary(isDark)),
               ),
             ],
           ),
         ),
         IconButton(
           onPressed: _loadPortfolio,
-          icon: const Icon(Icons.refresh, color: AppColors.primary),
+          icon: Icon(Icons.refresh, color: brandPrimary),
           tooltip: 'Refresh',
         ),
       ],
     );
   }
 
-  // ─── Summary Banner (matches HTML <GlassCard> with icon + value + buttons) ─
+  // ─── Summary Banner ────────────────────────────────────────────────────────
 
   Widget _buildSummaryBanner(bool isMobile) {
     final annualReturn = _totalInvested > 0
@@ -371,6 +399,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     final valStr = _currentValue >= 10000000
         ? '₹${(_currentValue / 10000000).toStringAsFixed(1)}Cr'
         : '₹${(_currentValue / 100000).toStringAsFixed(0)}L';
+
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
 
     return Container(
       decoration: BoxDecoration(
@@ -382,7 +412,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
           ],
         ),
         border: Border.all(
-          color: AppColors.getBrandPrimary(isDark).withOpacity(0.20),
+          color: brandPrimary.withOpacity(0.20),
         ),
       ),
       child: Padding(
@@ -407,22 +437,23 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   Widget _portfolioValueSection(String valStr, double annReturn) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+
     return Row(
       children: [
-        // Briefcase icon in gradient container
         Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: LinearGradient(
-              colors: [AppColors.getBrandPrimary(isDark), (isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark)],
+              colors: AppColors.getBrandGradient(isDark),
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.getBrandPrimary(isDark).withOpacity(0.3),
+                color: brandPrimary.withOpacity(0.3),
                 blurRadius: 30,
               ),
             ],
@@ -434,17 +465,17 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Total Portfolio Value',
+            Text('Total Portfolio Value',
                 style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.textTertiary,
+                    color: AppColors.getTextTertiary(isDark),
                     fontWeight: FontWeight.w500)),
             Text(
               valStr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: AppColors.getTextPrimary(isDark),
                 letterSpacing: -1,
               ),
             ),
@@ -452,14 +483,14 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             Row(
               children: [
                 Icon(Icons.trending_up,
-                    size: 14, color: AppColors.getBrandPrimary(isDark)),
+                    size: 14, color: brandPrimary),
                 const SizedBox(width: 4),
                 Text(
                   '+${annReturn.toStringAsFixed(1)}% Annualized Returns',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.getBrandPrimary(isDark),
+                    color: brandPrimary,
                   ),
                 ),
               ],
@@ -471,6 +502,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   Widget _bannerButtons(BuildContext context) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+
     return Wrap(
       spacing: 12,
       runSpacing: 10,
@@ -482,35 +515,13 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30)),
-            foregroundColor: Colors.white,
+            foregroundColor: AppColors.getTextPrimary(isDark),
           ),
-          child: const Text('Add Investment',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-        ),
-        ElevatedButton(
-          onPressed: () {},
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30)),
-          ),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30),
-              gradient: LinearGradient(
-                colors: [AppColors.getBrandPrimary(isDark), (isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark)],
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 12),
-              child: const Text('Rebalance',
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ),
+          child: Text('Add Investment',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.getTextPrimary(isDark),
+              )),
         ),
       ],
     );
@@ -519,6 +530,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   // ─── Tab Bar ───────────────────────────────────────────────────────────────
 
   Widget _buildTabBar() {
+    final secondaryGradient = AppColors.getSecondaryGradient(isDark);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
@@ -530,11 +543,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         onTap: (_) => setState(() {}),
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
-          gradient:
-              LinearGradient(colors: [(isDark ? const Color(0xFF733E85) : AppColors.lightSecondary), AppColors.secondary]),
+          gradient: LinearGradient(colors: secondaryGradient),
         ),
         labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textTertiary,
+        unselectedLabelColor: AppColors.getTextTertiary(isDark),
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         dividerColor: Colors.transparent,
         tabs: const [
@@ -578,16 +590,16 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
       child: Column(
         children: [
           Icon(Icons.pie_chart_outline,
-              size: 64, color: AppColors.textTertiary.withOpacity(0.3)),
+              size: 64, color: AppColors.getTextTertiary(isDark).withOpacity(0.3)),
           const SizedBox(height: 16),
-          const Text('No investments yet',
+          Text('No investments yet',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary)),
+                  color: AppColors.getTextPrimary(isDark))),
           const SizedBox(height: 8),
-          const Text('Tap the + button to add your first investment',
-              style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+          Text('Tap the + button to add your first investment',
+              style: TextStyle(fontSize: 14, color: AppColors.getTextTertiary(isDark)),
               textAlign: TextAlign.center),
         ],
       ),
@@ -603,11 +615,11 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Asset Allocation',
+          Text('Asset Allocation',
               style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+                  color: AppColors.getTextPrimary(isDark))),
           Divider(color: AppColors.getBorder(isDark, 0.1), height: 20),
           SizedBox(
             height: 200,
@@ -649,8 +661,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             runSpacing: 8,
             children: _allocation.map((d) {
               final type = d['type']?.toString() ?? '';
-              final pct =
-                  (d['allocation_percent'] as num?)?.toDouble() ?? 0;
+              final pct = (d['allocation_percent'] as num?)?.toDouble() ?? 0;
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -663,8 +674,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                   const SizedBox(width: 5),
                   Text(
                     '${_labelForType(type)} ${pct.toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textTertiary),
+                    style: TextStyle(
+                        fontSize: 11, color: AppColors.getTextTertiary(isDark)),
                   ),
                 ],
               );
@@ -684,14 +695,14 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Your Holdings',
+              Text('Your Holdings',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+                      color: AppColors.getTextPrimary(isDark))),
               Text('${_investments.length} assets',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textTertiary)),
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.getTextTertiary(isDark))),
             ],
           ),
           Divider(color: AppColors.getBorder(isDark, 0.1), height: 20),
@@ -705,6 +716,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     final gainColor =
         inv.gainLossPercent >= 0 ? AppColors.success : AppColors.error;
     final typeColor = _colorForType(inv.type, isDark);
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -717,7 +729,6 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         ),
         child: Row(
           children: [
-            // Type badge
             Container(
               width: 40,
               height: 40,
@@ -742,10 +753,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(inv.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
+                          color: AppColors.getTextPrimary(isDark)),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
@@ -771,13 +782,13 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: brandPrimary.withOpacity(0.1),
                           ),
                           child: Text(
                             'SIP ₹${(inv.sipAmount! / 1000).toStringAsFixed(0)}K/mo',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 10,
-                                color: AppColors.primary,
+                                color: brandPrimary,
                                 fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -793,10 +804,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
               children: [
                 Text(
                   '₹${(inv.currentValue / 100000).toStringAsFixed(1)}L',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary),
+                      color: AppColors.getTextPrimary(isDark)),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -822,30 +833,30 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             ),
             // Action buttons
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert,
-                  color: AppColors.textTertiary, size: 18),
-              color: const Color(0xFF0d2d52),
+              icon: Icon(Icons.more_vert,
+                  color: AppColors.getTextTertiary(isDark), size: 18),
+              color: AppColors.getDialogBg(isDark),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               onSelected: (val) {
                 if (val == 'edit') _showEditSheet(context, inv);
                 if (val == 'delete') _confirmDelete(context, inv);
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(
                     value: 'edit',
                     child: Row(children: [
-                      Icon(Icons.edit, size: 16, color: AppColors.primary),
-                      SizedBox(width: 8),
-                      Text('Edit', style: TextStyle(color: Colors.white)),
+                      Icon(Icons.edit, size: 16, color: brandPrimary),
+                      const SizedBox(width: 8),
+                      Text('Edit', style: TextStyle(color: AppColors.getTextPrimary(isDark))),
                     ])),
                 PopupMenuItem(
                     value: 'delete',
                     child: Row(children: [
-                      Icon(Icons.delete_outline,
+                      const Icon(Icons.delete_outline,
                           size: 16, color: AppColors.error),
-                      SizedBox(width: 8),
-                      Text('Remove',
+                      const SizedBox(width: 8),
+                      const Text('Remove',
                           style: TextStyle(color: AppColors.error)),
                     ])),
               ],
@@ -859,25 +870,26 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   void _confirmDelete(BuildContext context, Investment inv) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF0d2d52),
+      useRootNavigator: false,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.getDialogBg(isDark),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Remove Investment?',
-            style: TextStyle(color: Colors.white)),
+        title: Text('Remove Investment?',
+            style: TextStyle(color: AppColors.getTextPrimary(isDark))),
         content: Text('This will remove "${inv.name}" from your portfolio.',
-            style: const TextStyle(color: AppColors.textSecondary)),
+            style: TextStyle(color: AppColors.getTextSecondary(isDark))),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel',
-                  style: TextStyle(color: AppColors.textTertiary))),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Cancel',
+                  style: TextStyle(color: AppColors.getTextTertiary(isDark)))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10))),
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _deleteInvestment(inv);
             },
             child: const Text('Remove',
@@ -891,6 +903,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   // ─── Projections Tab ──────────────────────────────────────────────────────
 
   Widget _buildProjectionsTab() {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+
     return GlassCard(
       glowColor: (isDark ? const Color(0xFF153C6A) : AppColors.lightPrimaryDark),
       padding: const EdgeInsets.all(24),
@@ -900,18 +914,18 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('10-Year Growth Projection',
                       style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
-                  SizedBox(height: 4),
+                          color: AppColors.getTextPrimary(isDark))),
+                  const SizedBox(height: 4),
                   Text('Based on current portfolio + SIP contributions',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.textTertiary)),
+                          fontSize: 12, color: AppColors.getTextTertiary(isDark))),
                 ],
               ),
               Container(
@@ -919,15 +933,15 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: brandPrimary.withOpacity(0.1),
                   border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3)),
+                      color: brandPrimary.withOpacity(0.3)),
                 ),
                 child: Text(
                   '10.5% p.a.',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.primary,
+                      color: brandPrimary,
                       fontWeight: FontWeight.bold),
                 ),
               ),
@@ -937,9 +951,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
           SizedBox(
             height: 300,
             child: _projectionSpots.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text('Add investments to see projections',
-                        style: TextStyle(color: AppColors.textTertiary)))
+                        style: TextStyle(color: AppColors.getTextTertiary(isDark))))
                 : LineChart(
                     LineChartData(
                       gridData: FlGridData(
@@ -956,9 +970,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                             reservedSize: 55,
                             getTitlesWidget: (v, _) => Text(
                               '₹${v.toStringAsFixed(0)}L',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10,
-                                  color: AppColors.textTertiary),
+                                  color: AppColors.getTextTertiary(isDark)),
                             ),
                           ),
                         ),
@@ -967,9 +981,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                             showTitles: true,
                             getTitlesWidget: (v, _) => Text(
                               'Y${v.toInt()}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10,
-                                  color: AppColors.textTertiary),
+                                  color: AppColors.getTextTertiary(isDark)),
                             ),
                           ),
                         ),
@@ -983,7 +997,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                         LineChartBarData(
                           spots: _projectionSpots,
                           isCurved: true,
-                          color: AppColors.primary,
+                          color: brandPrimary,
                           barWidth: 3,
                           isStrokeCapRound: true,
                           dotData: FlDotData(
@@ -991,9 +1005,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                             getDotPainter: (_, __, ___, ____) =>
                                 FlDotCirclePainter(
                               radius: 4,
-                              color: AppColors.primary,
+                              color: brandPrimary,
                               strokeWidth: 2,
-                              strokeColor: Colors.white,
+                              strokeColor: isDark ? Colors.white : AppColors.lightBackground,
                             ),
                           ),
                           belowBarData: BarAreaData(
@@ -1002,8 +1016,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                AppColors.primary.withOpacity(0.35),
-                                AppColors.primary.withOpacity(0.0),
+                                brandPrimary.withOpacity(0.35),
+                                brandPrimary.withOpacity(0.0),
                               ],
                             ),
                           ),
@@ -1025,7 +1039,6 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                   ),
           ),
           const SizedBox(height: 20),
-          // Year labels
           Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -1043,14 +1056,14 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                 child: Column(
                   children: [
                     Text('Year ${s.x.toInt()}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.textTertiary)),
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.getTextTertiary(isDark))),
                     const SizedBox(height: 3),
                     Text('₹${s.y.toStringAsFixed(1)}L',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white)),
+                            color: AppColors.getTextPrimary(isDark))),
                   ],
                 ),
               );
@@ -1083,18 +1096,17 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         text: existing?.avgPrice?.toStringAsFixed(0) ?? '');
     final sipCtrl = TextEditingController(
         text: existing?.sipAmount?.toStringAsFixed(0) ?? '');
-    // Purchase date defaults to today
     final purchaseDateCtrl = TextEditingController(
         text: existing != null ? '' :
             '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().day.toString().padLeft(2,'0')}');
 
     String selectedType = existing?.type ?? 'mutual_fund';
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      useRootNavigator: false, // CRITICAL on Flutter Web – prevents browser history nav
       builder: (sheetContext) {
         return StatefulBuilder(builder: (ctx, sheetSetState) {
           return Container(
@@ -1107,11 +1119,11 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
             ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
-              color: const Color(0xFF0a1f3a),
-              border: Border.all(color: AppColors.whiteOpacity(0.15)),
+              color: AppColors.getSheetBg(isDark),
+              border: Border.all(color: AppColors.getBorder(isDark, 0.15)),
               boxShadow: [
                 BoxShadow(
-                    color: AppColors.primary.withOpacity(0.2),
+                    color: brandPrimary.withOpacity(0.2),
                     blurRadius: 40,
                     spreadRadius: 4),
               ],
@@ -1120,7 +1132,6 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle
                 Center(
                   child: Container(
                     width: 40,
@@ -1132,17 +1143,17 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                 ),
                 const SizedBox(height: 20),
                 Text(isEdit ? 'Edit Investment' : 'Add Investment',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white)),
+                        color: AppColors.getTextPrimary(isDark))),
                 const SizedBox(height: 20),
 
                 // Type selector
-                const Text('Asset Type',
+                Text('Asset Type',
                     style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textTertiary,
+                        color: AppColors.getTextTertiary(isDark),
                         fontWeight: FontWeight.w500)),
                 const SizedBox(height: 10),
                 SingleChildScrollView(
@@ -1172,7 +1183,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                                   border: Border.all(
                                     color: isSelected
                                         ? typeColor
-                                        : AppColors.whiteOpacity(0.15),
+                                        : AppColors.getBorder(isDark, 0.15),
                                     width: 1.5,
                                   ),
                                 ),
@@ -1184,7 +1195,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                                           : FontWeight.normal,
                                       color: isSelected
                                           ? typeColor
-                                          : AppColors.textTertiary,
+                                          : AppColors.getTextTertiary(isDark),
                                     )),
                               ),
                             ),
@@ -1261,7 +1272,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                             ? null
                             : purchaseDateCtrl.text.trim(),
                       };
-                      Navigator.pop(ctx);
+                      Navigator.pop(sheetContext);
                       if (isEdit && existing.id != null) {
                         _updateInvestment(existing.id!, payload);
                       } else {
@@ -1270,7 +1281,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: brandPrimary,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                     ),
@@ -1297,20 +1308,20 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textTertiary)),
+            style: TextStyle(
+                fontSize: 12, color: AppColors.getTextTertiary(isDark))),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: AppColors.whiteOpacity(0.06),
-            border: Border.all(color: AppColors.whiteOpacity(0.12)),
+            color: AppColors.getOverlay(isDark, 0.06),
+            border: Border.all(color: AppColors.getBorder(isDark, 0.12)),
           ),
           child: TextField(
             controller: ctrl,
             keyboardType:
                 isNumber ? TextInputType.number : TextInputType.text,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: AppColors.getTextPrimary(isDark), fontSize: 14),
             decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding:

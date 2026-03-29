@@ -35,6 +35,10 @@ class CustomSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -43,18 +47,18 @@ class CustomSlider extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textTertiary,
+                color: AppColors.getTextTertiary(isDark),
               ),
             ),
             Text(
               _formatValue(value),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+                color: brandPrimary,
               ),
             ),
           ],
@@ -62,7 +66,7 @@ class CustomSlider extends StatelessWidget {
         const SizedBox(height: 12),
         ShaderMask(
           shaderCallback: (bounds) => LinearGradient(
-            colors: AppColors.primaryGradient,
+            colors: brandGradient,
           ).createShader(bounds),
           child: Slider(
             value: value,
@@ -70,8 +74,8 @@ class CustomSlider extends StatelessWidget {
             max: max,
             divisions: divisions.toInt(),
             onChanged: onChanged,
-            activeColor: AppColors.primary,
-            inactiveColor: AppColors.whiteOpacity(0.1),
+            activeColor: brandPrimary,
+            inactiveColor: AppColors.getOverlay(isDark, 0.1),
           ),
         ),
       ],

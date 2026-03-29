@@ -57,28 +57,18 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-populate with default simulation results
     _localSimulate();
   }
 
-  // ── Shared params ──────────────────────────────────────────────────────────
   double _monthlySip = 10000;
   double _duration = 10;
   double _returnRate = 12;
-
-  // ── Lumpsum ────────────────────────────────────────────────────────────────
   double _lumpsum = 500000;
-
-  // ── Expense cut ────────────────────────────────────────────────────────────
   double _expenseCut = 5000;
-
-  // ── Loan prepay ────────────────────────────────────────────────────────────
   double _loanAmount = 1000000;
   double _loanRate = 10;
   double _loanTenure = 20;
   double _extraEmi = 5000;
-
-  // ─── Simulation ─────────────────────────────────────────────────────────────
 
   Future<void> _simulate() async {
     setState(() {
@@ -87,7 +77,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
       _chartData = [];
     });
 
-    // Build payload matching backend WhatIfScenario model
     final payload = <String, dynamic>{
       'scenario_type': _scenario.apiKey,
       'monthly_amount': _monthlySip,
@@ -105,7 +94,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
         '/whatif',
         body: payload,
         requireAuth: false,
-      ).timeout(const Duration(seconds: 2)); // Very short timeout to prevent UI freeze
+      ).timeout(const Duration(seconds: 2));
       _applyResult(res);
     } catch (_) {
       _localSimulate();
@@ -126,11 +115,9 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     });
   }
 
-  /// Local fallback that perfectly matches backend for all 4 scenarios
   void _localSimulate() {
     final n = _duration.toInt() * 12;
     final r = _returnRate / 100 / 12;
-
     final List<Map<String, dynamic>> data = [];
 
     if (_scenario == SimScenario.sipGrowth) {
@@ -156,7 +143,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
         _title = 'What if you invest ₹${sip.round()}/month for ${_duration.toInt()} years?';
         _chartData = data;
       });
-
     } else if (_scenario == SimScenario.lumpsum) {
       final ann = _returnRate / 100;
       for (int y = 0; y <= _duration.toInt(); y++) {
@@ -175,7 +161,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
         _title = 'What if you invest ₹${_lumpsum.round()} as lumpsum for ${_duration.toInt()} years?';
         _chartData = data;
       });
-
     } else if (_scenario == SimScenario.expenseCut) {
       final cut = _expenseCut;
       for (int y = 0; y <= _duration.toInt(); y++) {
@@ -197,7 +182,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
         _title = 'What if you cut ₹${cut.round()}/month and invest it?';
         _chartData = data;
       });
-
     } else if (_scenario == SimScenario.loanPrepay) {
       final principal = _loanAmount;
       final monthlyRate = _loanRate / 100 / 12;
@@ -208,7 +192,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           ? principal * monthlyRate * math.pow(1 + monthlyRate, maxMonths) / (math.pow(1 + monthlyRate, maxMonths) - 1)
           : principal / maxMonths;
 
-      // Normal interest
       double balance1 = principal;
       double normalInterest = 0;
       for (int i = 0; i < maxMonths; i++) {
@@ -218,7 +201,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
         balance1 = balance1 + interest - emi;
       }
 
-      // Prepay interest
       double balance2 = principal;
       double newInterest = 0;
       int newMonths = 0;
@@ -247,8 +229,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
       });
     }
   }
-
-  // ─── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -286,9 +266,10 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     );
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-
   Widget _buildHeader(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
+
     return Row(
       children: [
         Container(
@@ -296,14 +277,14 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF3DE0FC), Color(0xFF2475AC)],
+            gradient: LinearGradient(
+              colors: brandGradient,
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF3DE0FC).withOpacity(0.5),
+                color: brandPrimary.withOpacity(0.5),
                 blurRadius: 20,
               ),
             ],
@@ -317,7 +298,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           children: [
             ShaderMask(
               shaderCallback: (b) => LinearGradient(
-                colors: [AppColors.getTextPrimary(isDark), const Color(0xFF3DE0FC)],
+                colors: [AppColors.getTextPrimary(isDark), brandPrimary],
               ).createShader(b),
               child: Text(
                 'What-If Simulator',
@@ -338,19 +319,19 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     );
   }
 
-  // ── Controls panel ──────────────────────────────────────────────────────────
-
   Widget _buildControlsPanel(bool isMobile, bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandGradient = AppColors.getBrandGradient(isDark);
+
     return GlassCard(
-      glowColor: const Color(0xFF153C6A),
+      glowColor: isDark ? const Color(0xFF153C6A) : AppColors.lightPrimaryDark,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title row
           Row(
             children: [
-              const Icon(Icons.tune, color: AppColors.primary, size: 20),
+              Icon(Icons.tune, color: brandPrimary, size: 20),
               const SizedBox(width: 8),
               Text('Scenario',
                   style: TextStyle(
@@ -359,11 +340,8 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
                       color: AppColors.getTextPrimary(isDark))),
             ],
           ),
-          Divider(
-              color: AppColors.getBorder(isDark, 0.1),
-              height: 24),
+          Divider(color: AppColors.getBorder(isDark, 0.1), height: 24),
 
-          // Scenario selector chips
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -382,12 +360,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     gradient: isSel
-                        ? const LinearGradient(
-                            colors: [
-                              Color(0xFF3DE0FC),
-                              Color(0xFF2475AC)
-                            ],
-                          )
+                        ? LinearGradient(colors: brandGradient)
                         : null,
                     color: isSel
                         ? null
@@ -424,20 +397,15 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           ),
 
           const SizedBox(height: 20),
-
-          // Scenario-specific inputs
           ..._buildScenarioInputs(isDark),
-
           const SizedBox(height: 24),
 
-          // Simulate button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _isLoading ? null : _simulate,
               style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
@@ -449,12 +417,10 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
               child: Ink(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF3DE0FC), Color(0xFF2475AC)],
-                  ),
+                  gradient: LinearGradient(colors: brandGradient),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF3DE0FC).withOpacity(0.4),
+                      color: brandPrimary.withOpacity(0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 6),
                     ),
@@ -506,7 +472,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           _slider('Expected Annual Return', _returnRate, 4, 30, '%',
               (v) => setState(() => _returnRate = v), isDark, divisions: 52),
         ];
-
       case SimScenario.lumpsum:
         return [
           _slider('Lumpsum Amount', _lumpsum, 10000, 10000000, '₹',
@@ -518,7 +483,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           _slider('Expected Annual Return', _returnRate, 4, 30, '%',
               (v) => setState(() => _returnRate = v), isDark, divisions: 52),
         ];
-
       case SimScenario.expenseCut:
         return [
           _slider('Monthly Expense Cut', _expenseCut, 500, 100000, '₹',
@@ -530,7 +494,6 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
           _slider('Expected Annual Return', _returnRate, 4, 30, '%',
               (v) => setState(() => _returnRate = v), isDark, divisions: 52),
         ];
-
       case SimScenario.loanPrepay:
         return [
           _slider('Loan Amount', _loanAmount, 100000, 10000000, '₹',
@@ -558,6 +521,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     bool isDark, {
     int divisions = 100,
   }) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
     String display;
     if (suffix == '₹') {
       if (value >= 100000) {
@@ -585,13 +549,13 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
                   horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                color: AppColors.primary.withOpacity(0.12),
+                color: brandPrimary.withOpacity(0.12),
               ),
               child: Text(display,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary)),
+                      color: brandPrimary)),
             ),
           ],
         ),
@@ -601,10 +565,10 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             trackHeight: 3,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-            activeTrackColor: AppColors.primary,
+            activeTrackColor: brandPrimary,
             inactiveTrackColor: AppColors.getGlassBg(isDark, 0.08),
-            thumbColor: Colors.white,
-            overlayColor: AppColors.primary.withOpacity(0.2),
+            thumbColor: isDark ? Colors.white : AppColors.lightBackground,
+            overlayColor: brandPrimary.withOpacity(0.2),
           ),
           child: Slider(
             value: value.clamp(min, max),
@@ -618,14 +582,12 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     );
   }
 
-  // ── Results panel ────────────────────────────────────────────────────────────
-
   Widget _buildResultsPanel(bool isMobile, bool isDark) {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(64),
-          child: CircularProgressIndicator(color: AppColors.primary),
+          padding: const EdgeInsets.all(64),
+          child: CircularProgressIndicator(color: AppColors.getBrandPrimary(isDark)),
         ),
       );
     }
@@ -636,12 +598,9 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
 
     return Column(
       children: [
-        // Result stat cards
         _buildResultCards(isDark),
         const SizedBox(height: 20),
-        // Chart
         if (_chartData.isNotEmpty) _buildChart(isMobile, isDark),
-        // Insight
         if (_insight != null) ...[
           const SizedBox(height: 16),
           _buildInsightCard(isDark),
@@ -651,6 +610,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
   }
 
   Widget _buildEmptyState(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
     return GlassCard(
       padding: const EdgeInsets.all(48),
       child: Column(
@@ -686,10 +646,10 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Run Default Simulation',
+                Text('Run Default Simulation',
                     style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.primary,
+                        color: brandPrimary,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(width: 8),
                 Container(
@@ -697,12 +657,12 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: brandPrimary.withOpacity(0.15),
                     border: Border.all(
-                        color: AppColors.primary.withOpacity(0.4)),
+                        color: brandPrimary.withOpacity(0.4)),
                   ),
-                  child: const Icon(Icons.arrow_forward,
-                      size: 14, color: AppColors.primary),
+                  child: Icon(Icons.arrow_forward,
+                      size: 14, color: brandPrimary),
                 ),
               ],
             ),
@@ -734,90 +694,30 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     switch (_scenario) {
       case SimScenario.sipGrowth:
         return [
-          {
-            'label': 'Total Invested',
-            'value': _fmt(r['total_invested']),
-            'color': '#94A3B8'
-          },
-          {
-            'label': 'Wealth Gained',
-            'value': _fmt(r['wealth_gained']),
-            'color': '#E977F5'
-          },
-          {
-            'label': 'Final Value',
-            'value': _fmt(r['final_value']),
-            'color': '#3DE0FC'
-          },
-          {
-            'label': 'Return Multiple',
-            'value': '${r['return_multiple']}×',
-            'color': '#10B981'
-          },
+          {'label': 'Total Invested', 'value': _fmt(r['total_invested']), 'color': '#94A3B8'},
+          {'label': 'Wealth Gained', 'value': _fmt(r['wealth_gained']), 'color': '#E977F5'},
+          {'label': 'Final Value', 'value': _fmt(r['final_value']), 'color': '#3DE0FC'},
+          {'label': 'Return Multiple', 'value': '${r['return_multiple']}×', 'color': '#10B981'},
         ];
       case SimScenario.lumpsum:
         return [
-          {
-            'label': 'Amount Invested',
-            'value': _fmt(r['invested']),
-            'color': '#94A3B8'
-          },
-          {
-            'label': 'Wealth Gained',
-            'value': _fmt(r['wealth_gained']),
-            'color': '#E977F5'
-          },
-          {
-            'label': 'Final Value',
-            'value': _fmt(r['final_value']),
-            'color': '#3DE0FC'
-          },
-          {
-            'label': 'Return Multiple',
-            'value': '${r['return_multiple']}×',
-            'color': '#10B981'
-          },
+          {'label': 'Amount Invested', 'value': _fmt(r['invested']), 'color': '#94A3B8'},
+          {'label': 'Wealth Gained', 'value': _fmt(r['wealth_gained']), 'color': '#E977F5'},
+          {'label': 'Final Value', 'value': _fmt(r['final_value']), 'color': '#3DE0FC'},
+          {'label': 'Return Multiple', 'value': '${r['return_multiple']}×', 'color': '#10B981'},
         ];
       case SimScenario.expenseCut:
         return [
-          {
-            'label': 'Monthly Savings',
-            'value': _fmt(r['monthly_savings']),
-            'color': '#94A3B8'
-          },
-          {
-            'label': 'Total Saved',
-            'value': _fmt(r['total_saved']),
-            'color': '#E977F5'
-          },
-          {
-            'label': 'Invested Value',
-            'value': _fmt(r['invested_value']),
-            'color': '#3DE0FC'
-          },
+          {'label': 'Monthly Savings', 'value': _fmt(r['monthly_savings']), 'color': '#94A3B8'},
+          {'label': 'Total Saved', 'value': _fmt(r['total_saved']), 'color': '#E977F5'},
+          {'label': 'Invested Value', 'value': _fmt(r['invested_value']), 'color': '#3DE0FC'},
         ];
       case SimScenario.loanPrepay:
         return [
-          {
-            'label': 'Interest Saved',
-            'value': _fmt(r['interest_saved']),
-            'color': '#10B981'
-          },
-          {
-            'label': 'Months Saved',
-            'value': '${r['months_saved']} mo',
-            'color': '#3DE0FC'
-          },
-          {
-            'label': 'Original Tenure',
-            'value': r['original_tenure']?.toString() ?? '—',
-            'color': '#94A3B8'
-          },
-          {
-            'label': 'New Tenure',
-            'value': r['new_tenure']?.toString() ?? '—',
-            'color': '#E977F5'
-          },
+          {'label': 'Interest Saved', 'value': _fmt(r['interest_saved']), 'color': '#10B981'},
+          {'label': 'Months Saved', 'value': '${r['months_saved']} mo', 'color': '#3DE0FC'},
+          {'label': 'Original Tenure', 'value': r['original_tenure']?.toString() ?? '—', 'color': '#94A3B8'},
+          {'label': 'New Tenure', 'value': r['new_tenure']?.toString() ?? '—', 'color': '#E977F5'},
         ];
     }
   }
@@ -869,6 +769,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
   }
 
   Widget _buildChart(bool isMobile, bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
     final investedSpots = <BarChartGroupData>[];
     final allValues = _chartData
         .map((d) => (d['value'] as num?)?.toDouble() ?? 0)
@@ -892,7 +793,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             ),
             BarChartRodData(
               toY: val,
-              color: AppColors.primary,
+              color: brandPrimary,
               width: isMobile ? 8 : 14,
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(4)),
@@ -903,7 +804,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
     }
 
     return GlassCard(
-      glowColor: const Color(0xFF3DE0FC),
+      glowColor: brandPrimary,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,8 +814,8 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             children: [
               Expanded(
                 child: Row(children: [
-                  const Icon(Icons.bar_chart_rounded,
-                      color: AppColors.primary, size: 22),
+                  Icon(Icons.bar_chart_rounded,
+                      color: brandPrimary, size: 22),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -932,12 +833,11 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // Legend
           Row(
             children: [
               _legendDot(const Color(0xFF64748B), 'Invested', isDark),
               const SizedBox(width: 16),
-              _legendDot(AppColors.primary, 'Total Value', isDark),
+              _legendDot(brandPrimary, 'Total Value', isDark),
             ],
           ),
           const SizedBox(height: 20),
@@ -1029,8 +929,10 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
   }
 
   Widget _buildInsightCard(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    
     return GlassCard(
-      backgroundColor: AppColors.primary.withOpacity(0.06),
+      backgroundColor: brandPrimary.withOpacity(0.06),
       padding: const EdgeInsets.all(20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1039,23 +941,23 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withOpacity(0.15),
+              color: brandPrimary.withOpacity(0.15),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3)),
+                  color: brandPrimary.withOpacity(0.3)),
             ),
-            child: const Icon(Icons.insights,
-                size: 18, color: AppColors.primary),
+            child: Icon(Icons.insights,
+                size: 18, color: brandPrimary),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI Insight',
+                Text('AI Insight',
                     style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
+                        color: brandPrimary)),
                 const SizedBox(height: 6),
                 Text(_insight!,
                     style: TextStyle(

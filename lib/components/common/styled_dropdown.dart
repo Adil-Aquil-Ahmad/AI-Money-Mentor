@@ -41,6 +41,7 @@ class _StyledDropdownState<T> extends State<StyledDropdown<T>> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,7 +55,7 @@ class _StyledDropdownState<T> extends State<StyledDropdown<T>> {
               style: TextStyle(
                 fontSize: isMobile ? 12 : 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(isDark),
               ),
             ),
           ),
@@ -71,7 +72,7 @@ class _StyledDropdownState<T> extends State<StyledDropdown<T>> {
                   value,
                   style: TextStyle(
                     fontSize: isMobile ? 12 : 14,
-                    color: AppColors.textPrimary,
+                    color: AppColors.getTextPrimary(isDark),
                   ),
                 ),
               );
@@ -90,13 +91,13 @@ class _StyledDropdownState<T> extends State<StyledDropdown<T>> {
               hintText: widget.hint,
               hintStyle: TextStyle(
                 fontSize: isMobile ? 12 : 14,
-                color: AppColors.textTertiary.withOpacity(0.7),
+                color: AppColors.getTextTertiary(isDark).withOpacity(0.7),
               ),
               border: InputBorder.none,
               prefixIcon: widget.prefixIcon != null
                   ? Icon(
                       widget.prefixIcon,
-                      color: AppColors.primary,
+                      color: AppColors.getBrandPrimary(isDark),
                       size: 18,
                     )
                   : null,
@@ -109,17 +110,17 @@ class _StyledDropdownState<T> extends State<StyledDropdown<T>> {
               isDense: true,
             ),
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: AppColors.getTextPrimary(isDark),
               fontSize: isMobile ? 12 : 14,
             ),
-            dropdownColor: const Color(0xFF153C6A),
-            iconEnabledColor: AppColors.primary,
-            iconDisabledColor: AppColors.textTertiary,
+            dropdownColor: AppColors.getDropdownBg(isDark),
+            iconEnabledColor: AppColors.getBrandPrimary(isDark),
+            iconDisabledColor: AppColors.getTextTertiary(isDark),
             disabledHint: Text(
               widget.hint,
               style: TextStyle(
                 fontSize: isMobile ? 12 : 14,
-                color: AppColors.textTertiary.withOpacity(0.5),
+                color: AppColors.getTextTertiary(isDark).withOpacity(0.5),
               ),
             ),
             isExpanded: true,
@@ -192,6 +193,9 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandGradient = AppColors.getBrandGradient(isDark);
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,7 +209,7 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
               style: TextStyle(
                 fontSize: isMobile ? 12 : 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(isDark),
               ),
             ),
           ),
@@ -224,8 +228,8 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    gradient: const LinearGradient(
-                      colors: AppColors.primaryGradient,
+                    gradient: LinearGradient(
+                      colors: brandGradient,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -273,7 +277,7 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
                     vertical: 10,
                   ),
                   color: isSelected
-                      ? AppColors.primary.withOpacity(0.2)
+                      ? brandPrimary.withOpacity(0.2)
                       : Colors.transparent,
                   child: Row(
                     children: [
@@ -282,7 +286,7 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
                         height: 16,
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: AppColors.primary,
+                            color: brandPrimary,
                             width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(3),
@@ -291,7 +295,7 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
                             ? Icon(
                                 Icons.check,
                                 size: 12,
-                                color: AppColors.primary,
+                                color: brandPrimary,
                               )
                             : null,
                       ),
@@ -301,7 +305,7 @@ class _MultiSelectDropdownState extends State<MultiSelectDropdown> {
                           item,
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.textPrimary,
+                            color: AppColors.getTextPrimary(isDark),
                             fontWeight:
                                 isSelected ? FontWeight.w600 : FontWeight.w400,
                           ),
@@ -380,6 +384,7 @@ class _NumericInputFieldState extends State<NumericInputField> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -392,7 +397,7 @@ class _NumericInputFieldState extends State<NumericInputField> {
               style: TextStyle(
                 fontSize: isMobile ? 12 : 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: AppColors.getTextPrimary(isDark),
               ),
             ),
           ),
@@ -408,19 +413,19 @@ class _NumericInputFieldState extends State<NumericInputField> {
             onChanged: _validateAndUpdate,
             style: TextStyle(
               fontSize: isMobile ? 12 : 14,
-              color: AppColors.textPrimary,
+              color: AppColors.getTextPrimary(isDark),
             ),
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: TextStyle(
                 fontSize: isMobile ? 12 : 14,
-                color: AppColors.textTertiary.withOpacity(0.7),
+                color: AppColors.getTextTertiary(isDark).withOpacity(0.7),
               ),
               border: InputBorder.none,
               prefixText: widget.currency != null ? '${widget.currency} ' : null,
               prefixStyle: TextStyle(
                 fontSize: isMobile ? 12 : 14,
-                color: AppColors.primary,
+                color: AppColors.getBrandPrimary(isDark),
                 fontWeight: FontWeight.w600,
               ),
               suffixIcon: _focusNode.hasFocus
@@ -432,7 +437,7 @@ class _NumericInputFieldState extends State<NumericInputField> {
                       child: Icon(
                         Icons.close,
                         size: 18,
-                        color: AppColors.textTertiary,
+                        color: AppColors.getTextTertiary(isDark),
                       ),
                     )
                   : null,
@@ -451,7 +456,7 @@ class _NumericInputFieldState extends State<NumericInputField> {
               'Range: ${widget.minValue?.toStringAsFixed(2) ?? 'N/A'} - ${widget.maxValue?.toStringAsFixed(2) ?? 'N/A'}',
               style: TextStyle(
                 fontSize: 10,
-                color: AppColors.textTertiary,
+                color: AppColors.getTextTertiary(isDark),
               ),
             ),
           ),

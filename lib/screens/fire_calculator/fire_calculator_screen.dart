@@ -23,7 +23,6 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
   bool _isLoading = false;
   bool _seededFromPortfolio = false;
 
-  // Computed results
   int _yearsToFire = 0;
   double _fireNumber = 0;
   double _totalInvested = 0;
@@ -33,7 +32,6 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
   @override
   void initState() {
     super.initState();
-    // Seed from live portfolio state if available
     _seedFromPortfolio();
     _runCalculation();
   }
@@ -47,8 +45,6 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
       _seededFromPortfolio = true;
     }
   }
-
-  // ─── Local calculation (instant, fallback when backend unavailable) ────────
 
   void _runLocalCalc() {
     double currentWealth = currentInv;
@@ -82,7 +78,6 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
       _returnsGained = (data.lastWhere((d) => (d['total'] as int) >= corpus,
                   orElse: () => data.last)['returns'] as int)
               .toDouble();
-      // Filter to ~15 evenly spaced points
       _chartData = data.where((d) => (d['year'] as int) % 2 == 0).take(15).toList();
     });
   }
@@ -126,34 +121,36 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     }
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
     final isTablet = MediaQuery.of(context).size.width < 1024;
     final padding = isMobile ? 16.0 : 32.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(isMobile),
+          _buildHeader(isMobile, isDark),
           SizedBox(height: isMobile ? 20 : 32),
           if (isMobile)
-            _buildMobileLayout()
+            _buildMobileLayout(isDark)
           else if (isTablet)
-            _buildTabletLayout()
+            _buildTabletLayout(isDark)
           else
-            _buildDesktopLayout(),
+            _buildDesktopLayout(isDark),
           SizedBox(height: isMobile ? 80 : 24),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(bool isMobile) {
+  Widget _buildHeader(bool isMobile, bool isDark) {
+    final brandSecondary = AppColors.getBrandSecondary(isDark);
+    final secondaryGradient = AppColors.getSecondaryGradient(isDark);
+
     return Row(
       children: [
         Container(
@@ -161,9 +158,9 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
           height: isMobile ? 44 : 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: const LinearGradient(colors: [AppColors.secondary, Color(0xFF733E85)]),
+            gradient: LinearGradient(colors: secondaryGradient),
             boxShadow: [
-              BoxShadow(color: AppColors.secondary.withOpacity(0.5), blurRadius: 20),
+              BoxShadow(color: brandSecondary.withOpacity(0.5), blurRadius: 20),
             ],
           ),
           child: Icon(Icons.local_fire_department, color: Colors.white, size: isMobile ? 22 : 28),
@@ -175,21 +172,21 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
             children: [
               ShaderMask(
                 shaderCallback: (b) =>
-                    const LinearGradient(colors: [Colors.white, AppColors.secondary])
+                    LinearGradient(colors: [AppColors.getTextPrimary(isDark), brandSecondary])
                         .createShader(b),
                 child: Text(
                   'FIRE Calculator',
                   style: TextStyle(
                     fontSize: isMobile ? 24 : 32,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppColors.getTextPrimary(isDark),
                   ),
                 ),
               ),
               Text(
                 'Financial Independence, Retire Early.',
                 style: TextStyle(
-                    fontSize: isMobile ? 12 : 15, color: AppColors.textTertiary),
+                    fontSize: isMobile ? 12 : 15, color: AppColors.getTextTertiary(isDark)),
               ),
             ],
           ),
@@ -198,55 +195,50 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     );
   }
 
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout(bool isDark) {
     return Column(
       children: [
-        _buildInputPanel(),
+        _buildInputPanel(isDark),
         const SizedBox(height: 20),
-        _buildResultsGrid(crossAxisCount: 2),
+        _buildResultsGrid(crossAxisCount: 2, isDark: isDark),
         const SizedBox(height: 20),
-        _buildChartCard(height: 260),
+        _buildChartCard(height: 260, isDark: isDark),
       ],
     );
   }
 
-  Widget _buildTabletLayout() {
+  Widget _buildTabletLayout(bool isDark) {
     return Column(
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 1, child: _buildInputPanel()),
+            Expanded(flex: 1, child: _buildInputPanel(isDark)),
             const SizedBox(width: 20),
-            Expanded(flex: 1, child: _buildResultsGrid(crossAxisCount: 2)),
+            Expanded(flex: 1, child: _buildResultsGrid(crossAxisCount: 2, isDark: isDark)),
           ],
         ),
         const SizedBox(height: 20),
-        _buildChartCard(height: 300),
+        _buildChartCard(height: 300, isDark: isDark),
       ],
     );
   }
 
-  Widget _buildDesktopLayout() {
+  Widget _buildDesktopLayout(bool isDark) {
     return Column(
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left: Inputs
-            Expanded(
-              flex: 5,
-              child: _buildInputPanel(),
-            ),
+            Expanded(flex: 5, child: _buildInputPanel(isDark)),
             const SizedBox(width: 24),
-            // Right: Result cards
             Expanded(
               flex: 7,
               child: Column(
                 children: [
-                  _buildResultsGrid(crossAxisCount: 4),
+                  _buildResultsGrid(crossAxisCount: 4, isDark: isDark),
                   const SizedBox(height: 24),
-                  _buildChartCard(height: 320),
+                  _buildChartCard(height: 320, isDark: isDark),
                 ],
               ),
             ),
@@ -256,42 +248,41 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     );
   }
 
-  Widget _buildInputPanel() {
+  Widget _buildInputPanel(bool isDark) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+
     return GlassCard(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Your Variables',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.getTextPrimary(isDark)),
           ),
-          Divider(color: AppColors.whiteOpacity(0.1), height: 24),
+          Divider(color: AppColors.getBorder(isDark, 0.1), height: 24),
           if (_seededFromPortfolio)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  color: AppColors.primary.withOpacity(0.08),
-                  border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3)),
+                  color: brandPrimary.withOpacity(0.08),
+                  border: Border.all(color: brandPrimary.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.link,
-                        color: AppColors.primary, size: 16),
+                    Icon(Icons.link, color: brandPrimary, size: 16),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Values seeded from your Portfolio  '
                         '(₹${(PortfolioState.currentValue / 100000).toStringAsFixed(1)}L invested·'
                         '₹${(PortfolioState.monthlyTotalSip / 1000).toStringAsFixed(1)}K/mo SIP)',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.primary,
+                            color: brandPrimary,
                             height: 1.5),
                       ),
                     ),
@@ -363,23 +354,23 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: AppColors.whiteOpacity(0.05),
-              border: Border.all(color: AppColors.whiteOpacity(0.1)),
+              color: AppColors.getOverlay(isDark, 0.05),
+              border: Border.all(color: AppColors.getBorder(isDark, 0.1)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                Icon(Icons.info_outline, color: brandPrimary, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5),
+                      style: TextStyle(fontSize: 12, color: AppColors.getTextSecondary(isDark), height: 1.5),
                       children: [
                         const TextSpan(text: 'Your '),
                         TextSpan(
                           text: 'FIRE Number',
-                          style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: AppColors.getBrandSecondary(isDark), fontWeight: FontWeight.bold),
                         ),
                         const TextSpan(
                             text: ' is 25× annual expenses, assuming a 4% safe withdrawal rate.'),
@@ -401,37 +392,40 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
       _debounceActive = true;
       Future.delayed(const Duration(milliseconds: 600), () {
         _debounceActive = false;
-        _runLocalCalc(); // Instant local; optional: also call API
+        _runLocalCalc();
       });
     }
   }
 
-  Widget _buildResultsGrid({required int crossAxisCount}) {
+  Widget _buildResultsGrid({required int crossAxisCount, required bool isDark}) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandSecondary = AppColors.getBrandSecondary(isDark);
+
     final cards = [
       _ResultData(
         title: 'Years to Target',
         value: _yearsToFire == -1 ? '30+ yrs' : '$_yearsToFire yrs',
-        color: AppColors.primary,
+        color: brandPrimary,
         icon: Icons.access_time_rounded,
       ),
       _ResultData(
         title: 'FIRE Number',
         value: '₹${(_fireNumber / 100000).toStringAsFixed(1)}L',
         subtitle: 'To never work again',
-        color: AppColors.secondary,
+        color: brandSecondary,
         icon: Icons.local_fire_department,
       ),
       _ResultData(
         title: 'Total Invested',
         value: '₹${(_totalInvested / 100000).toStringAsFixed(1)}L',
-        color: const Color(0xFF2475AC),
+        color: isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark,
         icon: Icons.pie_chart_outline,
       ),
       _ResultData(
         title: 'Wealth Gained',
         value: '₹${(_returnsGained / 100000).toStringAsFixed(1)}L',
         subtitle: 'From compounding',
-        color: const Color(0xFF733E85),
+        color: isDark ? const Color(0xFF733E85) : AppColors.lightAccentGreen,
         icon: Icons.trending_up,
       ),
     ];
@@ -441,7 +435,7 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
         children: cards.map((c) => Expanded(
           child: Padding(
             padding: EdgeInsets.only(right: c == cards.last ? 0 : 14),
-            child: _buildResultCard(c),
+            child: _buildResultCard(c, isDark),
           ),
         )).toList(),
       );
@@ -454,11 +448,11 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
       childAspectRatio: crossAxisCount == 2 ? 0.95 : 1.0,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: cards.map(_buildResultCard).toList(),
+      children: cards.map((c) => _buildResultCard(c, isDark)).toList(),
     );
   }
 
-  Widget _buildResultCard(_ResultData card) {
+  Widget _buildResultCard(_ResultData card, bool isDark) {
     return GlassCard(
       backgroundColor: card.color.withOpacity(0.08),
       padding: const EdgeInsets.all(18),
@@ -481,8 +475,8 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
               Expanded(
                 child: Text(
                   card.title,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textTertiary, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      fontSize: 12, color: AppColors.getTextTertiary(isDark), fontWeight: FontWeight.w500),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -490,9 +484,9 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
             ],
           ),
           if (_isLoading)
-            const SizedBox(
+            SizedBox(
                 height: 24, width: 24,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.getBrandPrimary(isDark)))
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +505,7 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                 if (card.subtitle != null)
                   Text(
                     card.subtitle!,
-                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                    style: TextStyle(fontSize: 11, color: AppColors.getTextTertiary(isDark)),
                   ),
               ],
             ),
@@ -520,8 +514,10 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     );
   }
 
-  Widget _buildChartCard({required double height}) {
-    // Build spots from _chartData
+  Widget _buildChartCard({required double height, required bool isDark}) {
+    final brandPrimary = AppColors.getBrandPrimary(isDark);
+    final brandSecondary = AppColors.getBrandSecondary(isDark);
+
     final investedSpots = _chartData
         .map((d) => FlSpot(
               (d['year'] as int).toDouble(),
@@ -536,33 +532,33 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
         .toList();
 
     return GlassCard(
-      glowColor: AppColors.secondary,
+      glowColor: brandSecondary,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Wealth Growth Curve',
                 style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.getTextPrimary(isDark)),
               ),
               const Spacer(),
-              _legendDot(AppColors.primary, 'Invested'),
+              _legendDot(brandPrimary, 'Invested', isDark),
               const SizedBox(width: 12),
-              _legendDot(AppColors.secondary, 'Returns'),
+              _legendDot(brandSecondary, 'Returns', isDark),
             ],
           ),
           const SizedBox(height: 20),
           SizedBox(
             height: height,
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? Center(child: CircularProgressIndicator(color: brandPrimary))
                 : (_chartData.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text('Move sliders to see projection',
-                            style: TextStyle(color: AppColors.textTertiary)),
+                            style: TextStyle(color: AppColors.getTextTertiary(isDark))),
                       )
                     : LineChart(
                         LineChartData(
@@ -570,7 +566,7 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                             show: true,
                             drawVerticalLine: false,
                             getDrawingHorizontalLine: (_) => FlLine(
-                              color: AppColors.whiteOpacity(0.05),
+                              color: AppColors.getOverlay(isDark, 0.05),
                               strokeWidth: 1,
                             ),
                           ),
@@ -581,8 +577,8 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                                 reservedSize: 52,
                                 getTitlesWidget: (v, _) => Text(
                                   '₹${v.toStringAsFixed(0)}L',
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.textTertiary),
+                                  style: TextStyle(
+                                      fontSize: 10, color: AppColors.getTextTertiary(isDark)),
                                 ),
                               ),
                             ),
@@ -591,8 +587,8 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                                 showTitles: true,
                                 getTitlesWidget: (v, _) => Text(
                                   'Y${v.toInt()}',
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.textTertiary),
+                                  style: TextStyle(
+                                      fontSize: 10, color: AppColors.getTextTertiary(isDark)),
                                 ),
                               ),
                             ),
@@ -603,11 +599,10 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                           ),
                           borderData: FlBorderData(show: false),
                           lineBarsData: [
-                            // Invested (blue)
                             LineChartBarData(
                               spots: investedSpots,
                               isCurved: true,
-                              color: const Color(0xFF2475AC),
+                              color: isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark,
                               barWidth: 2,
                               dotData: const FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -616,17 +611,16 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    const Color(0xFF2475AC).withOpacity(0.4),
-                                    const Color(0xFF2475AC).withOpacity(0.0),
+                                    (isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark).withOpacity(0.4),
+                                    (isDark ? const Color(0xFF2475AC) : AppColors.lightPrimaryDark).withOpacity(0.0),
                                   ],
                                 ),
                               ),
                             ),
-                            // Returns (purple)
                             LineChartBarData(
                               spots: returnsSpots,
                               isCurved: true,
-                              color: AppColors.secondary,
+                              color: brandSecondary,
                               barWidth: 2,
                               dotData: const FlDotData(show: false),
                               belowBarData: BarAreaData(
@@ -635,8 +629,8 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    AppColors.secondary.withOpacity(0.4),
-                                    AppColors.secondary.withOpacity(0.0),
+                                    brandSecondary.withOpacity(0.4),
+                                    brandSecondary.withOpacity(0.0),
                                   ],
                                 ),
                               ),
@@ -662,13 +656,13 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     );
   }
 
-  Widget _legendDot(Color color, String label) {
+  Widget _legendDot(Color color, String label, bool isDark) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
         const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+        Text(label, style: TextStyle(fontSize: 11, color: AppColors.getTextTertiary(isDark))),
       ],
     );
   }
