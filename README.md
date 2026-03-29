@@ -221,4 +221,4 @@ The application will launch, connect to the local backend, and initialize the AI
 
 
 ### SYSTEM ARCHITECTURE DIAGRAM
-![alt text](image.png)
+![alt text](Gemini_Generated_Image_k0hs4mk0hs4mk0hs.png)
