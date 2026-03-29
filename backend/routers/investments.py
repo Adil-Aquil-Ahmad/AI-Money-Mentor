@@ -27,6 +27,7 @@ class InvestmentPayload(BaseModel):
     quantity: Optional[float] = None
     avg_price: Optional[float] = None
     sip_amount: Optional[float] = None
+    purchase_date: Optional[str] = None  # "YYYY-MM-DD" — used for P&L since invested
     currency: Optional[str] = "INR"
     meta: Optional[dict] = None
 
@@ -116,8 +117,8 @@ async def create_investment(payload: InvestmentPayload, user_id: int = Depends(g
     try:
         cursor = await db.execute(
             "INSERT INTO current_investments "
-            "(user_id, type, name, symbol, amount_invested, quantity, avg_price, sip_amount, currency, meta_json) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "(user_id, type, name, symbol, amount_invested, quantity, avg_price, sip_amount, purchase_date, currency, meta_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 user_id,
                 normalize_asset_type(payload.type),
@@ -127,6 +128,7 @@ async def create_investment(payload: InvestmentPayload, user_id: int = Depends(g
                 payload.quantity,
                 payload.avg_price,
                 payload.sip_amount,
+                payload.purchase_date,
                 payload.currency or "INR",
                 json.dumps(payload.meta or {}),
             ),

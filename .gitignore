@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ── Secrets — NEVER commit these ──────────────────────────────────────────
+backend/.env
+*.env
+android/app/google-services.json
+ios/GoogleService-Info.plist
+
+# Backend environments & caches
+backend/venv/
+backend/__pycache__/
+backend/.pytest_cache/

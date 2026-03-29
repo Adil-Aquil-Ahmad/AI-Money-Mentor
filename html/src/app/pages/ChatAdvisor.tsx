@@ -16,7 +16,7 @@ export function ChatAdvisor() {
     {
       id: "init",
       role: "advisor",
-      text: "Hello! I'm your AI Money Mentor. Based on your profile, you have a moderate risk tolerance and your primary goal is buying a house in 5 years. How can I help you today?",
+      text: "Hello! I'm Chrysos. Based on your profile, you have a moderate risk tolerance and your primary goal is buying a house in 5 years. How can I help you today?",
     }
   ]);
   const [input, setInput] = useState("");
@@ -71,8 +71,8 @@ export function ChatAdvisor() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8 z-20">
         <div>
-          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-[#3DE0FC]">
-            AI Chat Advisor
+          <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#FFD700] via-[#FFFACD] to-[#D4AF37] drop-shadow-[0_0_10px_rgba(255,215,0,0.6)]">
+            Chrysos
           </h2>
           <p className="text-slate-400 text-sm mt-1">Personalized, data-driven financial advice</p>
         </div>
@@ -110,7 +110,16 @@ export function ChatAdvisor() {
                       : "!bg-[#153C6A]/30 !border-[#3DE0FC]/30 text-slate-200 leading-relaxed"
                   }`}
                 >
-                  {msg.text}
+                  {msg.text.split("Chrysos").map((part, i, arr) => (
+                    <span key={i}>
+                      {part}
+                      {i < arr.length - 1 && (
+                        <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#FFD700] via-[#FFFACD] to-[#D4AF37]" style={{ filter: "drop-shadow(0 0 6px rgba(255,215,0,0.5))" }}>
+                          Chrysos
+                        </span>
+                      )}
+                    </span>
+                  ))}
                 </GlassCard>
 
                 {/* Rich Data Presentation */}

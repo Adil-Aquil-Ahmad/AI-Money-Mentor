@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Strategy-first prompt assembly.
+Chrysos — Strategy-first prompt assembly.
 Builds a single-pass prompt using normalized profile data, deterministic strategy,
 recent memory, recent chat context, and a few relevant knowledge facts.
 """

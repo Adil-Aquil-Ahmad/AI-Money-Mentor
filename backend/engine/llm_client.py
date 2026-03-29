@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Hybrid LLM Client (v3 — HYBRID ROUTING)
+Chrysos — Hybrid LLM Client (v3 — HYBRID ROUTING)
 Provider chain: Groq API (Primary) -> Ollama Local (Secondary) -> None (Template Fallback).
 """
 import hashlib
@@ -48,13 +48,19 @@ _CACHE_VERSION = "v2-template-lock"
 _last_model_used = "none"
 
 # ── Provider config (env vars) ───────────────────────────────────────────
-OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:1.7b")
 
 # Groq API Defaults
-API_URL   = os.getenv("LLM_API_URL", "https://api.groq.com/openai/v1/chat/completions")
-API_KEY   = os.getenv("LLM_API_KEY", "")
+API_URL   = os.getenv("LLM_API_URL",   "https://api.groq.com/openai/v1/chat/completions")
+API_KEY   = os.getenv("LLM_API_KEY",   "")
 API_MODEL = os.getenv("LLM_API_MODEL", "llama-3.3-70b-versatile")
+
+# Multi-Router tier models
+LLM_LIGHTWEIGHT = os.getenv("LLM_LIGHTWEIGHT", "llama-3.1-8b-instant")
+LLM_MIDWEIGHT   = os.getenv("LLM_MIDWEIGHT",   "llama-4-scout-17b-16e-instruct")
+LLM_HEAVYWEIGHT = os.getenv("LLM_HEAVYWEIGHT",  "llama-3.3-70b-versatile")
+USE_MULTI_ROUTER = os.getenv("USE_MULTI_ROUTER", "false").lower() == "true"
 
 
 def set_model_used(label: str):
@@ -143,6 +149,32 @@ async def generate(system_prompt: str, user_prompt: str) -> Optional[str]:
     set_model_used("none")
     logger.warning("⚠️  ALL LLMs FAILED — System must use Template Fallback")
     return None
+
+
+async def generate_with_model(model: str, system_prompt: str, user_prompt: str) -> Optional[str]:
+    """Call a specific model directly — used by multi-router task executor."""
+    result = await _try_api(system_prompt, user_prompt, model)
+    if result:
+        set_model_used(f"api:{model}")
+        return result
+    # Try heavyweight as safety net
+    if model != LLM_HEAVYWEIGHT:
+        result = await _try_api(system_prompt, user_prompt, LLM_HEAVYWEIGHT)
+        if result:
+            set_model_used(f"api:{LLM_HEAVYWEIGHT}(fallback)")
+            return result
+    return None
+
+
+async def generate_tiered(tier: str, system_prompt: str, user_prompt: str) -> Optional[str]:
+    """Generate using a specific tier — lightweight, midweight, or heavyweight."""
+    tier_model_map = {
+        "lightweight": LLM_LIGHTWEIGHT,
+        "midweight":   LLM_MIDWEIGHT,
+        "heavyweight": LLM_HEAVYWEIGHT,
+    }
+    model = tier_model_map.get(tier, LLM_HEAVYWEIGHT)
+    return await generate_with_model(model, system_prompt, user_prompt)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

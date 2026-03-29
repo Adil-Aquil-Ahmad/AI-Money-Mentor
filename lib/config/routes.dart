@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../screens/layout/main_layout.dart';
+import '../screens/auth/auth_wrapper.dart';
 import '../screens/chat_advisor/chat_advisor_screen.dart';
 import '../screens/financial_profile/financial_profile_screen.dart';
 import '../screens/health_score/health_score_screen.dart';
@@ -20,7 +20,7 @@ class AppRoutes {
 
   static Map<String, WidgetBuilder> get routes {
     return {
-      home: (_) => const MainLayoutWrapper(),
+      home: (_) => const AuthWrapper(),
       chatAdvisor: (_) => const ChatAdvisorScreen(),
       profile: (_) => const FinancialProfileScreen(),
       healthScore: (_) => const HealthScoreScreen(),

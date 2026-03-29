@@ -5,6 +5,8 @@ import '../../components/common/glass_card.dart';
 import '../../models/message.dart';
 import '../../models/api_models.dart';
 import '../../services/api_service.dart';
+import '../../services/encryption_service.dart';
+import '../../config/api_config.dart';
 
 class ChatAdvisorScreen extends StatefulWidget {
   const ChatAdvisorScreen({Key? key}) : super(key: key);
@@ -22,6 +24,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   String? _selectedDropdownValue;
   String _errorMessage = '';
   bool _backendConnected = false;
+  bool _disposed = false; // manual flag – more reliable than mounted getter
 
   final List<String> _predefinedQuestions = [
     'What is my current financial health?',
@@ -37,29 +40,32 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     super.initState();
     _messageController = TextEditingController();
     _scrollController = ScrollController();
-    _checkBackendConnection();
+    // Start with a static greeting immediately
     messages = [
       Message(
         id: 'init',
         role: 'advisor',
-        text:
-            "Hello! I'm your AI Money Mentor. Based on your profile, you have a moderate risk tolerance and your primary goal is buying a house in 5 years. How can I help you today?",
+        text: "Hello! I'm Chrysos. Loading your portfolio update...",
       ),
     ];
+    // Check backend + load greeting after first frame so widget is fully mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_disposed) return;
+      _checkBackendConnection();
+      _loadGreeting();
+    });
   }
 
   Future<void> _checkBackendConnection() async {
     try {
       final isConnected = await apiService.checkConnection();
+      if (_disposed || !mounted) return;
       setState(() {
         _backendConnected = isConnected;
-        if (isConnected) {
-          _errorMessage = '';
-        } else {
-          _errorMessage = 'Backend unreachable. Check if server is running.';
-        }
+        _errorMessage = isConnected ? '' : 'Backend unreachable. Check if server is running.';
       });
     } catch (e) {
+      if (_disposed || !mounted) return;
       setState(() {
         _backendConnected = false;
         _errorMessage = 'Connection error: $e';
@@ -67,8 +73,43 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     }
   }
 
+  Future<void> _loadGreeting() async {
+    try {
+      final result = await apiService.get<Map<String, dynamic>>(
+        '/chat/greeting?user_id=1',
+        requireAuth: false,
+      );
+      if (_disposed || !mounted) return;
+      final greetingText = result['greeting'] as String? ?? '';
+      if (greetingText.isEmpty) return;
+      setState(() {
+        final idx = messages.indexWhere((m) => m.id == 'init');
+        if (idx >= 0) {
+          messages[idx] = Message(
+            id: 'init',
+            role: 'advisor',
+            text: greetingText,
+          );
+        }
+      });
+    } catch (_) {
+      if (_disposed || !mounted) return;
+      setState(() {
+        final idx = messages.indexWhere((m) => m.id == 'init');
+        if (idx >= 0) {
+          messages[idx] = Message(
+            id: 'init',
+            role: 'advisor',
+            text: "Hello! I'm Chrysos. Based on your profile, you have a moderate risk tolerance and your primary goal is buying a house in 5 years. How can I help you today?",
+          );
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
+    _disposed = true; // set before calling super so pending futures bail out
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -118,12 +159,46 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     _scrollToBottom();
 
     try {
-      // Call backend API
+      // 1. Fetch Encrypted Profile
+      Map<String, dynamic> rawProfile = {};
+      try {
+        rawProfile = await apiService.get<Map<String, dynamic>>(
+          ApiConfig.profile,
+          requireAuth: false,
+        );
+      } catch (_) {}
+
+      // 2. Decrypt it to a transient memory dictionary
+      final transientProfile = <String, dynamic>{};
+      
+      Future<void> decryptField(String key, dynamic fallback) async {
+        final val = rawProfile[key];
+        if (val == null || val.toString().isEmpty) {
+          transientProfile[key] = fallback;
+          return;
+        }
+        final decrypted = await EncryptionService.unwrap(val.toString());
+        if (fallback is double) transientProfile[key] = double.tryParse(decrypted) ?? fallback;
+        else if (fallback is int) transientProfile[key] = int.tryParse(decrypted) ?? fallback;
+        else transientProfile[key] = decrypted;
+      }
+
+      await decryptField('age', 30);
+      await decryptField('monthly_income', 0.0);
+      await decryptField('monthly_expenses', 0.0);
+      await decryptField('current_savings', 0.0);
+      await decryptField('current_investments', 0.0);
+      await decryptField('current_debt', 0.0);
+      await decryptField('emergency_fund_months', 0);
+      await decryptField('has_insurance', 'false');
+
+      // 3. Call backend API with the Transient Profile
       final response = await apiService.post<ChatMessageResponse>(
-        '/chat/message',
+        '/chat', // Fixed endpoint to match FastAPI @router.post("/chat")
         body: ChatMessageRequest(
           userId: 'user_123', // TODO: Replace with actual user ID
           message: messageText,
+          transientProfile: transientProfile,
         ).toJson(),
         fromJson: (json) => ChatMessageResponse.fromJson(json),
         requireAuth: false,
@@ -256,7 +331,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                   colors: [Colors.white, AppColors.primary],
                                 ).createShader(bounds),
                                 child: const Text(
-                                  'AI Chat Advisor',
+                                  'Chrysos',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
@@ -386,7 +461,7 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
                                     colors: [Colors.white, AppColors.primary],
                                   ).createShader(bounds),
                                   child: const Text(
-                                    'AI Chat Advisor',
+                                    'Chrysos',
                                     style: TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
@@ -733,15 +808,26 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
               glowColor: isUser
                   ? const Color(0xFFE977F5)
                   : AppColors.primary,
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  fontSize: textSize,
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
+              child: message.text.contains('Chrysos')
+                  ? Text.rich(
+                      TextSpan(
+                        children: _buildChrysosSpans(
+                            message.text, textSize, AppColors.textSecondary),
+                      ),
+                      style: const TextStyle(
+                        height: 1.6,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    )
+                  : Text(
+                      message.text,
+                      style: TextStyle(
+                        fontSize: textSize,
+                        color: AppColors.textSecondary,
+                        height: 1.6,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
             ),
           ),
           if (isUser)
@@ -852,5 +938,28 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
         );
       },
     );
+  }
+  List<TextSpan> _buildChrysosSpans(String text, double textSize, Color baseColor) {
+    if (!text.contains('Chrysos')) {
+      return [TextSpan(text: text, style: TextStyle(fontSize: textSize, color: baseColor))];
+    }
+    final parts = text.split('Chrysos');
+    List<TextSpan> spans = [];
+    final goldStyle = TextStyle(
+      fontSize: textSize,
+      fontWeight: FontWeight.bold,
+      color: const Color(0xFFFFD700),
+      shadows: const [
+        Shadow(color: Color(0xFFD4AF37), blurRadius: 8),
+        Shadow(color: Color(0xFFFFA500), blurRadius: 4),
+      ],
+    );
+    for (int i = 0; i < parts.length; i++) {
+      spans.add(TextSpan(text: parts[i], style: TextStyle(fontSize: textSize, color: baseColor)));
+      if (i < parts.length - 1) {
+        spans.add(TextSpan(text: 'Chrysos', style: goldStyle));
+      }
+    }
+    return spans;
   }
 }

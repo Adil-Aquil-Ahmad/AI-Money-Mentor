@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Firebase Auth Middleware
+Chrysos — Firebase Auth Middleware
 Verifies Firebase ID tokens using Google's public keys (project-ID-only approach).
 No service account needed — uses token verification via Google's token info endpoint.
 """

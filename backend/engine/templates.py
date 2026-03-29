@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Deterministic fallback responses.
+Chrysos — Deterministic fallback responses.
 """
 import logging
 
@@ -78,23 +78,28 @@ def strict_template_response(intent: dict, profile: dict, rule_output: dict, sto
         )
 
     if "best_stocks" in intents and "invest_now" not in intents:
-        stock_lines = []
-        if ps.get("total_savings", 0) > 0 and snapshot.get("emergency_fund_gap", 0) > 0:
-            stock_lines.append("Stocks are secondary until emergency reserves and core allocation are in place.")
-        stock_lines.extend([
-            "Use index funds as the base and keep direct stocks limited to about 20-30% of the equity allocation.",
-            "Focus on stable sectors such as IT, banking, and energy.",
-            "Examples: Reliance Industries, TCS, Infosys, and HDFC Bank. These are examples, not guarantees.",
-        ])
-        return (
-            "Priority:\n"
-            "Get the broader allocation right first, then use direct stocks only as a small satellite bucket.\n\n"
-            "Stock Suggestions:\n"
-            f"{_bullet_block(stock_lines)}\n\n"
-            "What Not To Do:\n"
-            "- Do not build the portfolio around one stock.\n"
-            "- Do not skip index funds and jump straight into concentrated picks."
-        )
+        # ONLY use template when we have real live data to show
+        if stock_data:
+            live_lines = []
+            for s in stock_data[:5]:
+                change = s.get("change_percent", 0)
+                sign = "+" if change > 0 else ""
+                live_lines.append(
+                    f"{s['name']}: Rs{s['price']:,.2f} ({sign}{change}%)"
+                )
+            return (
+                "Market Snapshot:\n"
+                f"{_bullet_block(live_lines)}\n\n"
+                "Stock Suggestions:\n"
+                "- Use Nifty 50 or Nifty Next 50 index funds as the core equity exposure.\n"
+                "- Keep direct stocks to about 20-30% of the equity bucket.\n"
+                "- Focus on stable sectors: IT (TCS, Infosys), Banking (HDFC), Energy (Reliance).\n\n"
+                "What Not To Do:\n"
+                "- Do not pick one stock and invest everything into it.\n"
+                "- Short-term price movement is not long-term quality."
+            )
+        # No live data — let LLM handle it rather than showing generic hardcoded text
+        return None
 
     if "invest_now" in intents and stock_data:
         mover_lines = []

@@ -1,4 +1,4 @@
-package com.example.ethackathon
+package com.chrysos.ethackathon
 
 import io.flutter.embedding.android.FlutterActivity
 

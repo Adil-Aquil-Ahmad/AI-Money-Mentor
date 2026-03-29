@@ -1,5 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../layout/main_layout.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
 import '../../components/common/gradient_background.dart';
@@ -19,13 +23,93 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePass = true;
   bool _isLoading = false;
 
+  bool _isGoogleLoading = false;
+  bool _isHoverSubmit = false;
+  bool _isHoverGoogle = false;
+
   void _submit() async {
     setState(() => _isLoading = true);
-    // Fake network delay
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/'); // routes to MainLayoutWrapper
+    try {
+      UserCredential userCred;
+      if (_isSignUp) {
+        userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailCtrl.text.trim(),
+          password: _passCtrl.text,
+        );
+      } else {
+        userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _emailCtrl.text.trim(),
+          password: _passCtrl.text,
+        );
+      }
+      
+      bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? _isSignUp;
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/',
+          arguments: isNewUser ? 1 : 0,
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('Login Error: $e\n$stack');
+      if (mounted) {
+        final msg = e is FirebaseAuthException ? (e.message ?? 'Authentication failed') : 'An unexpected error occurred: $e';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        UserCredential userCred = await FirebaseAuth.instance.signInWithPopup(provider);
+        bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/',
+            arguments: isNewUser ? 1 : 0,
+          );
+        }
+      } else {
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        if (googleUser != null) {
+          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          final credential = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
+          bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/',
+              arguments: isNewUser ? 1 : 0,
+            );
+          }
+        }
+      }
+    } catch (e, stack) {
+      debugPrint('Google Sign-In Error: $e\n$stack');
+      if (mounted) {
+        final msg = e is FirebaseAuthException ? (e.message ?? 'Google Sign-In failed') : 'Google Sign-In error: $e';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
@@ -258,41 +342,53 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
         
         // Primary Action Button
-        GestureDetector(
-          onTap: _submit,
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: AppColors.getBrandGradient(isDark),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.getBrandPrimary(isDark).withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Center(
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      _isSignUp ? 'Sign Up' : 'Sign In',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHoverSubmit = true),
+          onExit: (_) => setState(() => _isHoverSubmit = false),
+          child: GestureDetector(
+            onTap: _submit,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedScale(
+              scale: _isHoverSubmit ? 1.02 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 52,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: AppColors.getBrandGradient(isDark),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.getBrandPrimary(isDark).withOpacity(_isHoverSubmit ? 0.6 : 0.3),
+                      blurRadius: _isHoverSubmit ? 16 : 10,
+                      offset: Offset(0, _isHoverSubmit ? 6 : 4),
                     ),
+                  ],
+                ),
+                child: Center(
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          _isSignUp ? 'Sign Up' : 'Sign In',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
             ),
           ),
         ),
@@ -303,7 +399,7 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              _isSignUp ? 'Already have an account?' : 'New to Money Mentor?',
+              _isSignUp ? 'Already have an account?' : 'New to Chrysos?',
               style: TextStyle(color: AppColors.getTextSecondary(isDark)),
             ),
             TextButton(
@@ -321,6 +417,70 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(child: Divider(color: AppColors.getBorder(isDark))),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Or continue with', style: TextStyle(color: AppColors.getTextSecondary(isDark), fontSize: 12)),
+            ),
+            Expanded(child: Divider(color: AppColors.getBorder(isDark))),
+          ],
+        ),
+        const SizedBox(height: 24),
+        MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHoverGoogle = true),
+          onExit: (_) => setState(() => _isHoverGoogle = false),
+          child: GestureDetector(
+            onTap: _signInWithGoogle,
+            behavior: HitTestBehavior.opaque,
+            child: AnimatedScale(
+              scale: _isHoverGoogle ? 1.02 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _isHoverGoogle 
+                      ? AppColors.getGlassBg(isDark, 0.1) 
+                      : AppColors.getGlassBg(isDark, 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isHoverGoogle 
+                        ? AppColors.getBorder(isDark, 0.3) 
+                        : AppColors.getBorder(isDark),
+                  ),
+                ),
+                child: Center(
+                  child: _isGoogleLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.g_mobiledata, color: AppColors.getTextPrimary(isDark), size: 36),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Sign in with Google',
+                              style: TextStyle(
+                                color: AppColors.getTextPrimary(isDark),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );

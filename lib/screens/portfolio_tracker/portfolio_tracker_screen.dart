@@ -99,7 +99,9 @@ class PortfolioTrackerScreen extends StatefulWidget {
 
 class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     with SingleTickerProviderStateMixin {
-  bool get isDark => Theme.of(context).brightness == Brightness.dark;
+  // Store theme flag so closures don't call Theme.of(context) after dispose
+  bool isDark = false;
+  bool _disposed = false;
 
   late TabController _tabController;
   bool _isLoading = false;
@@ -122,7 +124,15 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Safe place to read Theme — always called before build
+    isDark = Theme.of(context).brightness == Brightness.dark;
+  }
+
+  @override
   void dispose() {
+    _disposed = true;
     _tabController.dispose();
     super.dispose();
   }
@@ -130,17 +140,20 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   // ─── API ───────────────────────────────────────────────────────────────────
 
   Future<void> _loadPortfolio() async {
+    if (_disposed || !mounted) return;
     setState(() => _isLoading = true);
     try {
       final snap = await apiService.get<Map<String, dynamic>>(
         '/investments/portfolio',
         requireAuth: false,
       );
+      if (_disposed || !mounted) return;
       _applySnapshot(snap);
     } catch (_) {
+      if (_disposed || !mounted) return;
       _loadFallback();
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (!_disposed && mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -164,6 +177,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     // Build projection spots
     final spots = _buildProjectionSpots(curVal, sip);
 
+    if (_disposed || !mounted) return;
     setState(() {
       _investments = assets;
       _totalInvested = totalInv;
@@ -204,6 +218,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         .toList()
       ..sort((a, b) => (b['value'] as double).compareTo(a['value'] as double));
 
+    if (_disposed || !mounted) return;
     setState(() {
       _investments = investments;
       _totalInvested = totalInv;
@@ -230,8 +245,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
     if (inv.id == null) return;
     try {
       await apiService.delete('/investments/${inv.id}', requireAuth: false);
-      await _loadPortfolio();
+      if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {
+      if (_disposed || !mounted) return;
       setState(() => _investments.remove(inv));
     }
   }
@@ -239,9 +255,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   Future<void> _addInvestment(Map<String, dynamic> payload) async {
     try {
       await apiService.post('/investments', body: payload, requireAuth: false);
-      await _loadPortfolio();
+      if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {
-      // fallback: local add without id
+      if (_disposed || !mounted) return;
       final localInv = Investment.fromJson({
         ...payload,
         'current_value': payload['amount_invested'],
@@ -254,7 +270,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   Future<void> _updateInvestment(int id, Map<String, dynamic> payload) async {
     try {
       await apiService.put('/investments/$id', body: payload, requireAuth: false);
-      await _loadPortfolio();
+      if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {}
   }
 
@@ -1067,6 +1083,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
         text: existing?.avgPrice?.toStringAsFixed(0) ?? '');
     final sipCtrl = TextEditingController(
         text: existing?.sipAmount?.toStringAsFixed(0) ?? '');
+    // Purchase date defaults to today
+    final purchaseDateCtrl = TextEditingController(
+        text: existing != null ? '' :
+            '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2,'0')}-${DateTime.now().day.toString().padLeft(2,'0')}');
 
     String selectedType = existing?.type ?? 'mutual_fund';
 
@@ -1074,7 +1094,8 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
+      useRootNavigator: false, // CRITICAL on Flutter Web – prevents browser history nav
+      builder: (sheetContext) {
         return StatefulBuilder(builder: (ctx, sheetSetState) {
           return Container(
             margin: const EdgeInsets.all(12),
@@ -1129,35 +1150,45 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                   child: Row(
                     children: _typeLabels.entries.map((e) {
                       final isSelected = e.key == selectedType;
-                      return GestureDetector(
-                        onTap: () => sheetSetState(
-                            () => selectedType = e.key),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
+                      final typeColor = _colorForType(e.key, isDark);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: Material(
                             color: isSelected
-                                ? _colorForType(e.key, isDark).withOpacity(0.2)
+                                ? typeColor.withOpacity(0.2)
                                 : Colors.transparent,
-                            border: Border.all(
-                              color: isSelected
-                                  ? _colorForType(e.key, isDark)
-                                  : AppColors.whiteOpacity(0.15),
-                              width: 1.5,
+                            child: InkWell(
+                              onTap: () => sheetSetState(
+                                  () => selectedType = e.key),
+                              splashColor: typeColor.withOpacity(0.3),
+                              highlightColor: typeColor.withOpacity(0.1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? typeColor
+                                        : AppColors.whiteOpacity(0.15),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(e.value,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? typeColor
+                                          : AppColors.textTertiary,
+                                    )),
+                              ),
                             ),
                           ),
-                          child: Text(e.value,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? _colorForType(e.key, isDark)
-                                    : AppColors.textTertiary,
-                              )),
                         ),
                       );
                     }).toList(),
@@ -1195,6 +1226,10 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                       child: _field('Avg Price (₹) — optional', avgPriceCtrl,
                           isNumber: true)),
                 ]),
+                const SizedBox(height: 14),
+
+                // Purchase date
+                _field('Purchase Date (YYYY-MM-DD)', purchaseDateCtrl),
                 const SizedBox(height: 28),
 
                 // Save button
@@ -1222,6 +1257,9 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
                         'sip_amount': double.tryParse(sipCtrl.text),
                         'quantity': double.tryParse(qtyCtrl.text),
                         'avg_price': double.tryParse(avgPriceCtrl.text),
+                        'purchase_date': purchaseDateCtrl.text.trim().isEmpty
+                            ? null
+                            : purchaseDateCtrl.text.trim(),
                       };
                       Navigator.pop(ctx);
                       if (isEdit && existing.id != null) {

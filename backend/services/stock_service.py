@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Stock Service
+Chrysos — Stock Service
 Fetches real-time stock data via yfinance.
 Includes 5-minute in-memory caching to avoid API rate limits.
 """
@@ -21,7 +21,7 @@ if not logger.handlers:
 # ── In-memory cache (symbol → (data, timestamp)) ──
 _cache: dict = {}
 _news_cache: dict = {}
-_CACHE_TTL = 300  # 5 minutes
+_CACHE_TTL = 600  # 10 minutes (avoids yfinance rate limits during normal use)
 _YF_READY = False
 
 # ── Common Indian stock symbols (NSE) ──
@@ -99,14 +99,32 @@ MOVER_CANDIDATES = [
 
 def _resolve_symbol(name: str) -> Optional[str]:
     """Resolve a common name to a yfinance ticker symbol."""
-    name_lower = name.strip().lower()
+    name_clean = name.strip()
+    name_lower = name_clean.lower()
+
+    # 1. Direct match in our map
     if name_lower in SYMBOL_MAP:
         return SYMBOL_MAP[name_lower]
-    # If it looks like a ticker already (e.g. RELIANCE.NS)
-    if "." in name or name.startswith("^"):
-        return name.upper()
-    # Try appending .NS for NSE
-    return f"{name.upper()}.NS"
+
+    # 2. Already a full yfinance symbol (has . or starts with ^)
+    if "." in name_clean or name_clean.startswith("^"):
+        return name_clean.upper()
+
+    # 3. Pure uppercase ticker that looks like a US stock (2-5 chars, all alpha)
+    #    e.g. AAPL, MSFT, TSLA — try as-is
+    if name_clean.isupper() and name_clean.isalpha() and 2 <= len(name_clean) <= 5:
+        # Check if it\'s likely an Indian stock by seeing if it\'s in NSE
+        # Known US tickers — don\'t append .NS
+        us_like = {"AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "NVDA", "META",
+                   "NFLX", "UBER", "LYFT", "SNAP", "TWTR", "BABA", "V", "MA",
+                   "PYPL", "JPM", "GS", "BAC", "WMT", "KO", "PEP", "DIS"}
+        if name_clean in us_like:
+            return name_clean
+        # Otherwise assume NSE Indian stock
+        return f"{name_clean}.NS"
+
+    # 4. Fallback: append .NS
+    return f"{name_clean.upper()}.NS"
 
 
 def resolve_symbol(name: str) -> Optional[str]:
@@ -166,7 +184,7 @@ async def get_stock_data(symbol: str) -> Optional[dict]:
     """
     import asyncio
 
-    # Check cache
+    # Check cache — return stale data if available and rate-limited
     now = time.time()
     if symbol in _cache:
         data, ts = _cache[symbol]
@@ -176,14 +194,19 @@ async def get_stock_data(symbol: str) -> Optional[dict]:
 
     logger.info("Fetching live data for %s...", symbol)
     try:
-        # yfinance is sync, run in executor
         loop = asyncio.get_event_loop()
         data = await loop.run_in_executor(None, _fetch_sync, symbol)
         if data:
             _cache[symbol] = (data, now)
+        elif symbol in _cache:
+            # Return stale cache rather than None on failure
+            logger.warning("Returning stale cache for %s", symbol)
+            return _cache[symbol][0]
         return data
     except Exception as e:
         logger.error("Failed to fetch %s: %s", symbol, e)
+        if symbol in _cache:
+            return _cache[symbol][0]  # stale is better than nothing
         return None
 
 
@@ -202,10 +225,13 @@ def _fetch_sync(symbol: str) -> Optional[dict]:
                 prev = getattr(fi, "previous_close", None)
                 if price:
                     change_pct = ((price - prev) / prev * 100) if prev else 0
+                    change_abs = round(price - prev, 2) if prev else None
                     return {
                         "symbol": symbol,
                         "name": symbol.replace(".NS", "").replace("^", ""),
                         "price": round(price, 2),
+                        "prev_close": round(prev, 2) if prev else None,
+                        "change": change_abs,
                         "change_percent": round(change_pct, 2),
                         "trend": "upward" if change_pct > 0 else "downward" if change_pct < 0 else "flat",
                         "volume": getattr(fi, "last_volume", None),
@@ -236,6 +262,8 @@ def _fetch_sync(symbol: str) -> Optional[dict]:
             "symbol": symbol,
             "name": name,
             "price": round(price, 2),
+            "prev_close": round(prev_close, 2) if prev_close else None,
+            "change": round(price - prev_close, 2) if prev_close else None,
             "change_percent": round(change_pct, 2),
             "trend": trend,
             "volume": volume,

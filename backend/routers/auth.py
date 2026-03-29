@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Auth Router
+Chrysos — Auth Router
 POST /auth/verify — Verify Firebase token and return user info
 GET  /auth/me     — Get current authenticated user
 """

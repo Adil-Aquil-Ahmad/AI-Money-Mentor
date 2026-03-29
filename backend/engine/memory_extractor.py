@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Memory Extractor
+Chrysos — Memory Extractor
 Auto-detects goals, preferences, life events, and insights from chat messages.
 Stores them in the memory table for long-term personalization.
 """

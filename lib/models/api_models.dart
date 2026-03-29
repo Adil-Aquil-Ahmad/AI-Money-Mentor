@@ -4,17 +4,20 @@ class ChatMessageRequest {
   final String userId;
   final String message;
   final List<String>? context;
+  final Map<String, dynamic>? transientProfile;
 
   ChatMessageRequest({
     required this.userId,
     required this.message,
     this.context,
+    this.transientProfile,
   });
 
   Map<String, dynamic> toJson() => {
     'user_id': userId,
     'message': message,
     if (context != null) 'context': context,
+    if (transientProfile != null) 'transient_profile': transientProfile,
   };
 }
 
@@ -31,7 +34,7 @@ class ChatMessageResponse {
 
   factory ChatMessageResponse.fromJson(Map<String, dynamic> json) =>
       ChatMessageResponse(
-        message: json['message'] ?? '',
+        message: json['response'] ?? json['message'] ?? '',
         advisorThought: json['advisor_thought'],
         data: json['data'],
       );

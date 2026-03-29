@@ -19,19 +19,21 @@ class NavItem {
 }
 
 class MainLayoutWrapper extends StatelessWidget {
-  const MainLayoutWrapper({Key? key}) : super(key: key);
+  final int initialIndex;
+  const MainLayoutWrapper({Key? key, this.initialIndex = 0}) : super(key: key);
   @override
-  Widget build(BuildContext context) => const MainLayout();
+  Widget build(BuildContext context) => MainLayout(initialIndex: initialIndex);
 }
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({Key? key}) : super(key: key);
+  final int initialIndex;
+  const MainLayout({Key? key, this.initialIndex = 0}) : super(key: key);
   @override
   State<MainLayout> createState() => _MainLayoutState();
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   final List<NavItem> navItems = [
     NavItem(label: 'Advisor Chat', icon: Icons.chat_bubble_outline, index: 0),
@@ -54,6 +56,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
   }
 
   void _updatePage(int index) {

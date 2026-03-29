@@ -5,6 +5,7 @@ import '../../components/common/custom_input_field.dart';
 import '../../components/common/custom_button.dart';
 import '../../models/financial_profile.dart';
 import '../../services/api_service.dart';
+import '../../services/encryption_service.dart';
 import '../../theme/app_theme.dart';
 import '../../config/api_config.dart';
 
@@ -35,22 +36,45 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
         ApiConfig.profile,
         requireAuth: false,
       );
+      
+      Future<double> unwrapDouble(dynamic val, double fallback) async {
+        if (val == null || val.toString().isEmpty) return fallback;
+        final decrypted = await EncryptionService.unwrap(val.toString());
+        return double.tryParse(decrypted) ?? fallback;
+      }
+
+      Future<int> unwrapInt(dynamic val, int fallback) async {
+        if (val == null || val.toString().isEmpty) return fallback;
+        final decrypted = await EncryptionService.unwrap(val.toString());
+        return int.tryParse(decrypted) ?? fallback;
+      }
+
+      Future<bool> unwrapBool(dynamic val, bool fallback) async {
+        if (val == null || val.toString().isEmpty) return fallback;
+        final decrypted = await EncryptionService.unwrap(val.toString());
+        return decrypted.toLowerCase() == 'true';
+      }
+
+      final unwrappedAge = await unwrapInt(result['age'], profile.age);
+      final unwrappedIncome = await unwrapDouble(result['monthly_income'], profile.income);
+      final unwrappedExpenses = await unwrapDouble(result['monthly_expenses'], profile.expenses);
+      final unwrappedSavings = await unwrapDouble(result['current_savings'], profile.savings);
+      final unwrappedInvestments = await unwrapDouble(result['current_investments'], profile.investments);
+      final unwrappedDebt = await unwrapDouble(result['current_debt'], profile.debt);
+      final unwrappedEmFund = await unwrapInt(result['emergency_fund_months'], profile.emergencyMonths);
+      final unwrappedHasIns = await unwrapBool(result['has_insurance'], profile.hasInsurance);
+
       if (mounted) {
         setState(() {
           profile.name = result['name']?.toString() ?? profile.name;
-          profile.income =
-              (result['monthly_income'] as num?)?.toDouble() ?? profile.income;
-          profile.expenses =
-              (result['monthly_expenses'] as num?)?.toDouble() ?? profile.expenses;
-          profile.savings =
-              (result['current_savings'] as num?)?.toDouble() ?? profile.savings;
-          profile.investments =
-              (result['current_investments'] as num?)?.toDouble() ?? profile.investments;
-          profile.debt =
-              (result['current_debt'] as num?)?.toDouble() ?? profile.debt;
-          profile.emergencyMonths =
-              (result['emergency_fund_months'] as num?)?.toInt() ?? profile.emergencyMonths;
-          profile.hasInsurance = (result['has_insurance'] == 1 || result['has_insurance'] == true);
+          profile.age = unwrappedAge;
+          profile.income = unwrappedIncome;
+          profile.expenses = unwrappedExpenses;
+          profile.savings = unwrappedSavings;
+          profile.investments = unwrappedInvestments;
+          profile.debt = unwrappedDebt;
+          profile.emergencyMonths = unwrappedEmFund;
+          profile.hasInsurance = unwrappedHasIns;
           profile.goals = result['financial_goals']?.toString() ?? profile.goals;
           final risk = result['risk_profile']?.toString() ?? '';
           if (risk.isNotEmpty) {
@@ -73,22 +97,25 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
+      // E2EE Envelope creation for sensitive numerics
+      final payload = {
+        'name': profile.name,
+        'age': await EncryptionService.wrap(profile.age.toString()),
+        'monthly_income': await EncryptionService.wrap(profile.income.toString()),
+        'monthly_expenses': await EncryptionService.wrap(profile.expenses.toString()),
+        'current_savings': await EncryptionService.wrap(profile.savings.toString()),
+        'current_investments': await EncryptionService.wrap(profile.investments.toString()),
+        'current_debt': await EncryptionService.wrap(profile.debt.toString()),
+        'emergency_fund_months': await EncryptionService.wrap(profile.emergencyMonths.toString()),
+        'has_emergency_fund': await EncryptionService.wrap((profile.emergencyMonths > 0).toString()),
+        'has_insurance': await EncryptionService.wrap(profile.hasInsurance.toString()),
+        'goals': [profile.goals],
+        'risk_profile': profile.riskProfile.toLowerCase(),
+      };
+
       await apiService.post<Map<String, dynamic>>(
         ApiConfig.profile,
-        body: {
-          'name': profile.name,
-          'age': profile.age,
-          'monthly_income': profile.income,
-          'monthly_expenses': profile.expenses,
-          'current_savings': profile.savings,
-          'current_investments': profile.investments,
-          'current_debt': profile.debt,
-          'emergency_fund_months': profile.emergencyMonths,
-          'has_emergency_fund': profile.emergencyMonths > 0,
-          'has_insurance': profile.hasInsurance,
-          'goals': [profile.goals],
-          'risk_profile': profile.riskProfile.toLowerCase(),
-        },
+        body: payload,
         requireAuth: false,
       );
       if (mounted) {
@@ -252,17 +279,27 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
                   ],
                 )
               else
-                GridView(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 0.8),
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                Column(
                   children: [
-                    CustomInputField(label: 'Monthly Income', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.income.toStringAsFixed(0)), onChanged: (v) => profile.income = double.tryParse(v) ?? 0),
-                    CustomInputField(label: 'Monthly Expenses', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.expenses.toStringAsFixed(0)), onChanged: (v) => profile.expenses = double.tryParse(v) ?? 0),
-                    CustomInputField(label: 'Current Savings', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.savings.toStringAsFixed(0)), onChanged: (v) => profile.savings = double.tryParse(v) ?? 0),
-                    CustomInputField(label: 'Total Investments', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.investments.toStringAsFixed(0)), onChanged: (v) => profile.investments = double.tryParse(v) ?? 0),
-                    CustomInputField(label: 'Current Debt', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.debt.toStringAsFixed(0)), onChanged: (v) => profile.debt = double.tryParse(v) ?? 0),
-                    CustomInputField(label: 'Emergency Fund', hint: 'months', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.emergencyMonths.toString()), onChanged: (v) => profile.emergencyMonths = int.tryParse(v) ?? 0),
+                    Row(
+                      children: [
+                        Expanded(child: CustomInputField(label: 'Monthly Income', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.income.toStringAsFixed(0)), onChanged: (v) => profile.income = double.tryParse(v) ?? 0)),
+                        const SizedBox(width: 16),
+                        Expanded(child: CustomInputField(label: 'Monthly Expenses', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.expenses.toStringAsFixed(0)), onChanged: (v) => profile.expenses = double.tryParse(v) ?? 0)),
+                        const SizedBox(width: 16),
+                        Expanded(child: CustomInputField(label: 'Current Savings', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.savings.toStringAsFixed(0)), onChanged: (v) => profile.savings = double.tryParse(v) ?? 0)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: CustomInputField(label: 'Total Investments', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.investments.toStringAsFixed(0)), onChanged: (v) => profile.investments = double.tryParse(v) ?? 0)),
+                        const SizedBox(width: 16),
+                        Expanded(child: CustomInputField(label: 'Current Debt', hint: '₹', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.debt.toStringAsFixed(0)), onChanged: (v) => profile.debt = double.tryParse(v) ?? 0)),
+                        const SizedBox(width: 16),
+                        Expanded(child: CustomInputField(label: 'Emergency Fund', hint: 'months', keyboardType: TextInputType.number, controller: TextEditingController(text: profile.emergencyMonths.toString()), onChanged: (v) => profile.emergencyMonths = int.tryParse(v) ?? 0)),
+                      ],
+                    ),
                   ],
                 ),
               const SizedBox(height: 24),

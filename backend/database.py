@@ -1,5 +1,5 @@
 """
-AI Money Mentor — SQLite Database Layer (v2 — Auth + Memory)
+Chrysos — SQLite Database Layer (v2 — Auth + Memory)
 Tables: users (with firebase_uid), chat_history, response_cache, memory.
 """
 import aiosqlite
@@ -25,15 +25,15 @@ async def init_db():
             firebase_uid TEXT UNIQUE,
             email TEXT,
             name TEXT NOT NULL DEFAULT 'User',
-            age INTEGER,
-            monthly_income REAL DEFAULT 0,
-            monthly_expenses REAL DEFAULT 0,
-            current_savings REAL DEFAULT 0,
-            current_investments REAL DEFAULT 0,
-            current_debt REAL DEFAULT 0,
-            has_insurance INTEGER DEFAULT 0,
-            has_emergency_fund INTEGER DEFAULT 0,
-            emergency_fund_months REAL DEFAULT 0,
+            age TEXT,
+            monthly_income TEXT DEFAULT '0',
+            monthly_expenses TEXT DEFAULT '0',
+            current_savings TEXT DEFAULT '0',
+            current_investments TEXT DEFAULT '0',
+            current_debt TEXT DEFAULT '0',
+            has_insurance TEXT DEFAULT '0',
+            has_emergency_fund TEXT DEFAULT '0',
+            emergency_fund_months TEXT DEFAULT '0',
             risk_profile TEXT DEFAULT 'medium',
             goals TEXT DEFAULT '[]',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -77,6 +77,7 @@ async def init_db():
             quantity REAL,
             avg_price REAL,
             sip_amount REAL,
+            purchase_date TEXT,
             currency TEXT DEFAULT 'INR',
             meta_json TEXT DEFAULT '{}',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

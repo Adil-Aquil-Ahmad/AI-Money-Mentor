@@ -1,5 +1,5 @@
 """
-AI Money Mentor — FastAPI Backend (v2 — Auth + Memory)
+# Chrysos — FastAPI Backend (v2 — Auth + Memory)
 Main application entry point with CORS, routers, and DB initialization.
 """
 from fastapi import FastAPI
@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import init_db
 from routers import chat, profile, health_score, fire, whatif, auth, memory, investments
+from routers import greeting as greeting_router
 
 
 @asynccontextmanager
@@ -16,7 +17,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AI Money Mentor", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Chrysos", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,11 +36,13 @@ app.include_router(investments.router, prefix="/api", tags=["Investments"])
 app.include_router(health_score.router, prefix="/api", tags=["Health Score"])
 app.include_router(fire.router, prefix="/api", tags=["FIRE Calculator"])
 app.include_router(whatif.router, prefix="/api", tags=["What-If Simulator"])
+app.include_router(greeting_router.router, prefix="", tags=["Greeting"])
+
 
 
 @app.get("/api/ping")
 async def ping():
-    return {"status": "ok", "app": "AI Money Mentor", "version": "2.0.0"}
+    return {"status": "ok", "app": "Chrysos", "version": "2.0.0"}
 
 
 if __name__ == "__main__":
