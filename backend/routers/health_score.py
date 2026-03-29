@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Money Health Score Router
+Chrysos — Money Health Score Router
 GET /api/health-score — Calculate a 0-100 financial health score with improvement tips.
 """
 from fastapi import APIRouter, Depends

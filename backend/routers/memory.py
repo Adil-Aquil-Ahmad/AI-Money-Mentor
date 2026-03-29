@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Memory Router
+Chrysos — Memory Router
 GET    /api/memory      — List user's memories
 POST   /api/memory      — Manually add a memory
 DELETE /api/memory/{id}  — Delete a memory

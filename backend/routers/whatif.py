@@ -1,5 +1,5 @@
 """
-AI Money Mentor — What-If Simulator Router
+Chrysos — What-If Simulator Router
 POST /api/whatif — Simulate financial scenarios ("What if I invest ₹X for Y years?")
 """
 from fastapi import APIRouter

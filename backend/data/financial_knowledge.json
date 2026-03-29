@@ -1,0 +1,61 @@
+{
+  "risk_categories": {
+    "low": {
+      "instruments": [
+        "Fixed Deposits (FD)",
+        "Liquid Funds",
+        "Short-term Debt Funds"
+      ],
+      "suitable_for": "Capital preservation and immediate liquidity needs (1-2 years)."
+    },
+    "medium": {
+      "instruments": [
+        "Index Funds (Nifty 50)",
+        "Aggressive Hybrid Funds",
+        "Large-cap Equity"
+      ],
+      "suitable_for": "Balanced growth with moderate volatility over a medium-term horizon (3-5 years)."
+    },
+    "high": {
+      "instruments": [
+        "Mid-cap & Small-cap Stocks",
+        "Sectoral/Thematic Funds",
+        "Direct Equity Portfolio"
+      ],
+      "suitable_for": "Long-term wealth creation (7+ years) with high tolerance for market swings."
+    }
+  },
+  "sip_strategies": {
+    "beginner": {
+      "recommended_allocation": "80% Nifty 50 Index Fund, 20% Liquid Fund",
+      "tip": "Focus on building the habit of consistency before chasing high returns."
+    },
+    "moderate": {
+      "recommended_allocation": "50% Nifty 50, 30% Nifty Next 50, 20% Debt",
+      "tip": "Annual rebalancing helps lock in gains and maintain your target risk profile."
+    },
+    "aggressive": {
+      "recommended_allocation": "40% Nifty 50, 30% Midcap 150, 30% Smallcap 250",
+      "tip": "Market corrections are opportunities to increase allocation. Stay invested."
+    }
+  },
+  "index_funds": {
+    "nifty_50": {
+      "name": "Nifty 50 Index Fund",
+      "best_for": "Consistent market-beta returns with the lowest expense ratios"
+    },
+    "nifty_midcap_150": {
+      "name": "Nifty Midcap 150 Index Fund",
+      "risk": "High growth potential with significantly higher volatility than Large-caps"
+    }
+  },
+  "tax_saving_instruments": {
+    "elss": {
+      "tax_benefit": "Tax deduction up to ₹1.5L under Section 80C",
+      "lock_in": "Shortest lock-in of only 3 years among all 80C options"
+    },
+    "nps": {
+      "extra_deduction": "Additional ₹50,000 tax benefit under Section 80CCD(1B) beyond the 80C limit"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Single-pass response generator with strategy validation.
+Chrysos — Single-pass response generator with strategy validation.
 """
 import re
 import logging
@@ -7,6 +7,9 @@ from engine.context_builder import build_response_context, build_correction_cont
 from engine import llm_client
 from engine.pipeline_debug import trace_event
 from engine.templates import strict_template_response, template_fallback
+from engine.task_decomposer import decompose_query
+from engine.model_router import route_all
+from engine.task_executor import execute_all
 
 logger = logging.getLogger("response_gen")
 logger.setLevel(logging.DEBUG)
@@ -29,8 +32,10 @@ async def generate_response(
 ) -> tuple:
     """
     Returns (response_text, used_llm).
-    Executes a single LLM generation cycle plus one correction retry if needed.
+    If USE_MULTI_ROUTER is enabled, runs the full decompose→route→execute pipeline.
+    Falls back to single-pass if router fails or flag is disabled.
     """
+    # ── Check deterministic strict template first (always fastest) ────────────
     strict_response = strict_template_response(intent, profile, rule_output, stock_data or [])
     if strict_response:
         llm_client.set_model_used("strict-template")
@@ -42,6 +47,20 @@ async def generate_response(
         logger.info("Using deterministic strict template for intent set: %s", intent.get("intents"))
         return strict_response, False
 
+    # ── Multi-router path ─────────────────────────────────────────────────────
+    if llm_client.USE_MULTI_ROUTER:
+        try:
+            router_result = await _generate_with_router(
+                intent, rule_output, profile, chat_history, memories, stock_data, portfolio_context
+            )
+            if router_result and len(router_result) > 40:
+                logger.info("Multi-router returned response (%d chars)", len(router_result))
+                return router_result, True
+            logger.warning("Multi-router returned empty — falling back to single-pass")
+        except Exception as e:
+            logger.error("Multi-router pipeline error: %s — falling back", e)
+
+    # ── Single-pass fallback path ─────────────────────────────────────────────
     system_prompt, user_prompt = build_response_context(
         profile, rule_output, chat_history, intent,
         memories=memories or [], stock_data=stock_data or [], portfolio_context=portfolio_context or {},
@@ -124,6 +143,106 @@ async def generate_response(
     logger.warning("Response is too weak after retries. Using template fallback only because LLM output is unusable.")
     llm_client.set_model_used("template-fallback")
     return template_fallback(intent.get("original_message", ""), profile, rule_output), False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Multi-Router Pipeline
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def _generate_with_router(
+    intent: dict,
+    rule_output: dict,
+    profile: dict,
+    chat_history: list,
+    memories: list | None,
+    stock_data: list | None,
+    portfolio_context: dict | None,
+) -> str | None:
+    """
+    Full 5-stage pipeline:
+      1. Qwen3 1.7B (offline) decomposes query → structured subtask JSON
+      2. Model router assigns each subtask to a model tier
+      3. Parallel async executor runs all subtasks concurrently
+      4. Results aggregated into a combined context string
+      5. Heavyweight model synthesizes final response
+    """
+    message = intent.get("original_message", "")
+    logger.info("=== MULTI-ROUTER START: '%s' ===", message[:80])
+
+    # Stage 1: Decompose
+    tasks = await decompose_query(message)
+    trace_event("router_decompose", {"message": message, "tasks": tasks})
+    logger.info("Stage 1: %d subtasks decomposed", len(tasks))
+
+    # Stage 2: Route
+    routed = route_all(tasks)
+    trace_event("router_route", {"routed_tasks": routed})
+    logger.info("Stage 2: Tasks routed → %s", [(t["id"], t["tier"], t["model"]) for t in routed])
+
+    # Stage 3: Execute in parallel
+    context = {
+        "rule_output":      rule_output,
+        "profile":          profile,
+        "stock_data":       stock_data or [],
+        "intent":           intent,
+        "portfolio_context": portfolio_context or {},
+    }
+    results = await execute_all(routed, context)
+    trace_event("router_execute", {"results": [
+        {"id": r["task"]["id"], "success": r["success"], "snippet": str(r.get("result", ""))[:100]}
+        for r in results
+    ]})
+    successful = [r for r in results if r["success"] and r["result"]]
+    logger.info("Stage 3: %d/%d subtasks succeeded", len(successful), len(results))
+
+    if not successful:
+        logger.warning("All subtasks failed — multi-router returning None")
+        return None
+
+    # Stage 4: Aggregate subtask results into one context block
+    aggregated_parts = []
+    for r in successful:
+        task    = r["task"]
+        content = r["result"].strip()
+        aggregated_parts.append(
+            f"[Subtask {task['id']} — {task['type']}]: {task['description']}\n{content}"
+        )
+    aggregated_context = "\n\n".join(aggregated_parts)
+
+    # Stage 5: Heavyweight model synthesizes the final response
+    ps       = rule_output.get("profile_summary", {})
+    strategy = rule_output.get("strategy", {})
+    synth_system = (
+        "You are an expert Indian financial advisor. "
+        "The following subtask results have been gathered by specialist AI models. "
+        "Combine them into a single clear, personalized, and actionable response. "
+        f"User profile — Age: {ps.get('age', 'N/A')}, "
+        f"Income: Rs{ps.get('income', 0):,}, "
+        f"Monthly savings: Rs{ps.get('monthly_savings', 0):,}, "
+        f"Risk: {ps.get('risk_profile', 'medium')}, "
+        f"Goal: {ps.get('goal_name', 'wealth growth')}. "
+        f"Primary strategy: {strategy.get('primary_priority', '')}. "
+        "Use the structure: Priority: / Why: / Action Plan: / What Not To Do:. "
+        "Target 120-180 words. Do not mention subtasks, models, or internal systems."
+    )
+    synth_user = (
+        f"User question: {message}\n\n"
+        f"Subtask results:\n{aggregated_context}\n\n"
+        "Write the final personalised response now."
+    )
+
+    heavy_model = llm_client.LLM_HEAVYWEIGHT
+    final = await llm_client.generate_with_model(heavy_model, synth_system, synth_user)
+    llm_client.set_model_used(f"multi-router:{heavy_model}")
+
+    if final:
+        trace_event("router_synthesis", {"model": heavy_model, "response": final})
+        logger.info("=== MULTI-ROUTER COMPLETE: %d chars ===", len(final))
+        return _clean(final)
+
+    logger.warning("Synthesis step failed in multi-router")
+    return None
+
 
 
 def _strategy_validation_failures(text: str, intent: dict, rule_output: dict, stock_data: list, portfolio_context: dict | None = None) -> list[str]:

@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Intent Parser
+Chrysos — Intent Parser
 Hybrid intent detection: LLM-based classification (primary) with keyword-based fallback.
 Extracts monetary amounts from messages for financial context.
 """
@@ -60,7 +60,24 @@ KEYWORD_PATTERNS = {
         r"my\s+holdings",
     ],
     "start_investing": [r"how\s+to\s+start\s+investing", r"start\s+invest", r"begin.*invest"],
-    "invest_now": [r"invest\s+in\s+stocks\s+now", r"right\s+time.*invest", r"market.*high", r"going\s+up\s+today", r"today'?s?\s+stocks", r"top\s+gainers", r"most\s+active"],
+    "invest_now": [
+        r"invest\s+in\s+stocks\s+now",
+        r"right\s+time.*invest",
+        r"market.*high",
+        r"going\s+up\s+today",
+        r"today'?s?\s+stocks",
+        r"top\s+gainers",
+        r"most\s+active",
+        r"list\s+.*stocks",
+        r"show\s+.*stocks",
+        r"stock.*increase",
+        r"stocks.*increas",
+        r"stock.*percent",
+        r"stock.*gain",
+        r"which\s+stocks?\s+are\s+(up|rising|gaining)",
+        r"trending\s+stocks",
+        r"best\s+performing\s+stocks",
+    ],
     "manage_income": [r"manage.*income", r"manage.*salary", r"budget.*salary"],
     "allocate_money": [r"allocate.*money", r"split.*salary", r"divide.*income"],
     "grow_wealth": [r"grow.*wealth", r"rich", r"make\s+more\s+money"],
@@ -90,7 +107,7 @@ async def parse_intent_with_llm(message: str, llm_base_url: str) -> Optional[lis
             response = await client.post(
                 f"{llm_base_url}/api/generate",
                 json={
-                    "model": "qwen2.5:7b",
+                    "model": "qwen3:1.7b",
                     "prompt": prompt,
                     "stream": False,
                     "options": {"temperature": 0.1, "num_predict": 20},

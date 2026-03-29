@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Profile Router (v2 — Auth)
+Chrysos — Profile Router (v2 — Auth)
 CRUD endpoints for user financial profile with risk profiling.
 """
 from fastapi import APIRouter, Depends
@@ -13,17 +13,24 @@ router = APIRouter()
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
-    age: Optional[int] = None
-    monthly_income: Optional[float] = None
-    monthly_expenses: Optional[float] = None
-    current_savings: Optional[float] = None
-    current_investments: Optional[float] = None
-    current_debt: Optional[float] = None
-    has_insurance: Optional[bool] = None
-    has_emergency_fund: Optional[bool] = None
-    emergency_fund_months: Optional[float] = None
-    risk_profile: Optional[str] = None          # low / medium / high
+    age: Optional[str] = None  # Encrypted string
+    monthly_income: Optional[str] = None # Encrypted string
+    monthly_expenses: Optional[str] = None
+    current_savings: Optional[str] = None
+    current_investments: Optional[str] = None
+    current_debt: Optional[str] = None
+    has_insurance: Optional[str] = None
+    has_emergency_fund: Optional[str] = None
+    emergency_fund_months: Optional[str] = None
+    risk_profile: Optional[str] = None          
     goals: Optional[List[str]] = None
+
+class TransientRiskAssessment(BaseModel):
+    age: int = 30
+    monthly_income: float = 0
+    current_debt: float = 0
+    current_savings: float = 0
+    has_emergency_fund: int = 0
 
 
 @router.get("/profile")
@@ -81,22 +88,15 @@ async def update_profile(profile: ProfileUpdate, user_id: int = Depends(get_curr
         await db.close()
 
 
-@router.get("/profile/risk-assessment")
-async def risk_assessment(user_id: int = Depends(get_current_user)):
-    """Auto-assess risk profile based on user data."""
-    db = await get_db()
+@router.post("/profile/risk-assessment")
+async def risk_assessment(data: TransientRiskAssessment, user_id: int = Depends(get_current_user)):
+    """Transiently assess risk profile based on decrypted client payload without storing it."""
     try:
-        cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-        row = await cursor.fetchone()
-        if not row:
-            return {"risk_profile": "medium", "reason": "Default profile"}
-
-        p = dict(row)
-        age = p.get("age") or 30
-        income = p.get("monthly_income") or 0
-        debt = p.get("current_debt") or 0
-        savings = p.get("current_savings") or 0
-        has_efund = p.get("has_emergency_fund", 0)
+        age = data.age
+        income = data.monthly_income
+        debt = data.current_debt
+        savings = data.current_savings
+        has_efund = data.has_emergency_fund
 
         score = 0
         reasons = []
@@ -151,5 +151,5 @@ async def risk_assessment(user_id: int = Depends(get_current_user)):
             "max_score": 7,
             "reasons": reasons,
         }
-    finally:
-        await db.close()
+    except Exception as e:
+        return {"error": str(e)}

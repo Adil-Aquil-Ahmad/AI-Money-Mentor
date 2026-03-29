@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Chat Router (v4 — Stock Data + Auth + Memory)
+Chrysos — Chat Router (v4 — Stock Data + Auth + Memory)
 Pipeline: Auth -> Intent -> Rules -> Memory -> Stock Data -> Context -> LLM -> Response
 """
 import logging
@@ -30,12 +30,22 @@ if not logger.handlers:
 router = APIRouter()
 
 # Intents that should trigger stock data fetching
-STOCK_INTENTS = {"best_stocks", "invest_now"}
+STOCK_INTENTS = {"best_stocks", "invest_now", "good_portfolio", "diversify_portfolio", "rebalance_portfolio"}
+
+# Keyword triggers that always require live stock data regardless of intent
+STOCK_KEYWORDS = [
+    "stock", "share", "nifty", "sensex", "reliance", "tcs", "hdfc", "infosys",
+    "invest", "market", "mutual fund", "sip", "index fund", "gain", "increase",
+    "list", "show me", "trending", "best performing",
+]
 PORTFOLIO_INTENTS = {"good_portfolio", "rebalance_portfolio", "diversify_portfolio"}
 
 
+from typing import Optional
+
 class ChatMessage(BaseModel):
     message: str
+    transient_profile: Optional[dict] = None
 
 
 @router.post("/chat")
@@ -57,9 +67,15 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
         if memories_extracted:
             logger.info("Step 2: Extracted %d memories", len(memories_extracted))
 
-        # Step 3: Fetch user profile
-        cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-        row = await cursor.fetchone()
+        # Step 3: Fetch user profile (Prefer transient E2EE profile if provided)
+        if msg.transient_profile:
+            logger.info("Step 3: Using E2EE transient profile from client")
+            row_dict = msg.transient_profile
+        else:
+            cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+            row = await cursor.fetchone()
+            row_dict = dict(row) if row else {}
+
         # Step 4: Fetch recent chat history
         cursor = await db.execute(
             "SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY id DESC LIMIT 10",
@@ -72,7 +88,7 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
         top_memories = await get_top_memories(user_id, limit=5)
         logger.info("Step 5: %d memories loaded for context", len(top_memories))
 
-        profile = normalize_profile(dict(row) if row else {}, msg.message, top_memories)
+        profile = normalize_profile(row_dict, msg.message, top_memories)
 
         # Step 6: Parse intent
         intent = await parse_intent(msg.message)
@@ -110,15 +126,22 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
         # Step 8: Fetch live stock data (if stock-related query)
         stock_data = []
         symbols = extract_stock_names(msg.message)
-        if any(item in STOCK_INTENTS for item in intent.get("intents", [intent["intent"]])) or symbols:
+        message_lower = msg.message.lower()
+        wants_stocks = (
+            any(item in STOCK_INTENTS for item in intent.get("intents", [intent["intent"]]))
+            or symbols
+            or any(kw in message_lower for kw in STOCK_KEYWORDS)
+        )
+        if wants_stocks:
             if symbols:
                 logger.info("Step 8: Fetching stock data for %s", symbols)
                 stock_data = await get_multiple_stocks_data(symbols)
-            elif "invest_now" in intent.get("intents", []):
+            elif "invest_now" in intent.get("intents", []) or any(
+                kw in message_lower for kw in ["list", "show", "trending", "increase", "gain", "top"]
+            ):
                 logger.info("Step 8: No specific stocks found, fetching market movers")
                 stock_data = await get_market_movers()
             else:
-                # Generic stock query — show market overview
                 logger.info("Step 8: No specific stocks found, fetching market overview")
                 stock_data = await get_market_overview()
 

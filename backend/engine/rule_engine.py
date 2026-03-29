@@ -1,5 +1,5 @@
 """
-AI Money Mentor — Deterministic financial strategy engine.
+Chrysos — Deterministic financial strategy engine.
 Returns structured data and a strategy object. It does not return user-facing text.
 """
 

@@ -1,194 +1,123 @@
-# AI Money Mentor 💰
+# Chrysos: Personal AI Financial Advisor
 
-**AI-powered personal finance mentor for Indian users** — mobile-first chat interface with rule-based financial engine + LLM intelligence.
+## Project Overview
 
----
+Chrysos is an advanced, personalized, and privacy-first AI financial advisor application. It combines a state-of-the-art Flutter frontend with a robust Python FastAPI backend, utilizing a sophisticated multi-tier Large Language Model (LLM) routing pipeline. The application provides dynamic portfolio tracking, real-time market data analysis, sentiment evaluation on financial news, and conversational financial advice tailored to the user's specific investments.
 
-## ✨ Features
+Privacy is a core pillar of Chrysos. The system employs End-to-End Encryption (E2EE) for user data, ensuring that personal financial information is decrypted locally on the device and only transmitted to the backend as transient payloads for processing without being permanently stored in plain text.
 
-| Feature | Description |
-|---------|-------------|
-| 💬 **Chat Advisor** | WhatsApp-style AI chat for life-event financial advice |
-| 📊 **Money Health Score** | 0–100 score with category breakdown & improvement tips |
-| 🔥 **FIRE Calculator** | Financial Independence projections with interactive charts |
-| 🔮 **What-If Simulator** | SIP growth, lumpsum, expense cut, loan prepayment scenarios |
-| 👤 **Risk Profiling** | Low / Medium / High risk-adapted recommendations |
-| 🧠 **Hybrid LLM** | llama.cpp → Ollama → API fallback → rule-engine offline mode |
-| 📱 **Mobile Ready** | Capacitor config for Android APK builds |
+## Core Features and AI Strategy
 
----
+The cornerstone of the Chrysos intelligence is its Multi-Tier LLM Routing System. Instead of relying on a single monolithic model for every request, Chrysos decomposes tasks and routes them to the most appropriate model based on complexity, cost, and latency requirements.
 
-## 🏗️ Architecture
+### The Multi-Tier Model Pipeline
 
-```
-User Input → Intent Parser (LLM+keyword) → Rule Engine → Context Builder → LLM → Response Generator
-```
+1. **Task Planner (Offline / Edge Tier)**
+   - **Model**: Qwen3 1.7B (via Ollama)
+   - **Role**: Acts as the initial gatekeeper and task planner. It runs locally and offline, analyzing the user's query to decompose it into discrete tasks (e.g., retrieving stock data, calculating portfolio metrics, generating a summary).
+   - **Advantage**: Zero latency cost for API calls, maximum privacy for the initial query parsing, and acts as a deterministic fallback if external APIs are unavailable.
 
-- **Frontend**: Vite (vanilla JS/CSS), Capacitor for mobile
-- **Backend**: Python FastAPI + SQLite
-- **AI**: Hybrid chain — llama.cpp server → Ollama → External API → rule-engine fallback
+2. **Lightweight Tier (Fast & Efficient)**
+   - **Model**: LLaMA 3.1 8B / Groq Mini
+   - **Role**: Handles straightforward calculations, data formatting, and simple queries.
+   - **Advantage**: Extremely fast response times and low computational cost for tasks that do not require deep reasoning.
 
----
+3. **Mid-Weight Tier (Balanced)**
+   - **Model**: LLaMA 4 Scout / Mixtral
+   - **Role**: Manages intermediate reasoning tasks, such as comparing multiple asset classes or providing standard financial definitions.
+   - **Advantage**: Balances deeper contextual understanding with reasonable inference speed.
 
-## 📁 Project Structure
+4. **Heavyweight Tier (High Intelligence & Synthesis)**
+   - **Model**: LLaMA 3.3 70B (via Groq)
+   - **Role**: Reserved for complex synthesis and deep analysis. It handles tasks such as sentiment analysis on market news (e.g., determining if recent headlines about a stock are bullish or bearish) and formulating the final, comprehensive response to the user.
+   - **Advantage**: Superior reasoning, nuance detection, and high-quality natural language generation.
 
-```
-AI Money Mentor/
-├── frontend/
-│   ├── index.html                 # App shell (all views)
-│   ├── package.json               # Vite + Capacitor deps
-│   ├── vite.config.js             # Dev server + API proxy
-│   ├── capacitor.config.ts        # Android build config
-│   └── src/
-│       ├── main.js                # Entry point + navigation
-│       ├── chat.js                # Chat engine + bubbles
-│       ├── profile.js             # Profile modal
-│       ├── health-score.js        # Health score view
-│       ├── fire-calculator.js     # FIRE calculator + chart
-│       ├── whatif.js              # What-if simulator + chart
-│       ├── api.js                 # API client
-│       └── styles/
-│           ├── main.css           # Design system (dark theme)
-│           ├── chat.css           # Chat bubble styles
-│           └── components.css     # Shared components
-│
-├── backend/
-│   ├── main.py                    # FastAPI app entry
-│   ├── database.py                # SQLite setup
-│   ├── requirements.txt           # Python deps
-│   ├── engine/
-│   │   ├── intent_parser.py       # LLM + keyword intent detection
-│   │   ├── rule_engine.py         # Deterministic financial rules
-│   │   ├── context_builder.py     # LLM prompt assembly
-│   │   ├── llm_client.py          # Hybrid LLM provider chain
-│   │   └── response_generator.py  # Final response formatting
-│   └── routers/
-│       ├── chat.py                # Chat pipeline endpoint
-│       ├── profile.py             # Profile CRUD + risk assessment
-│       ├── health_score.py        # Health score calculation
-│       ├── fire.py                # FIRE calculator
-│       └── whatif.py              # What-if simulator
-│
-└── README.md
-```
+## Codebase Architecture
 
----
+The repository is structured into two main components: the Frontend (Flutter) and the Backend (Python FastAPI).
 
-## 🚀 Quick Start
+### Frontend (Flutter)
+Located in the root directory and `lib/` folder.
+- `lib/main.dart`: Application entry point and theme initialization.
+- `lib/config/routes.dart`: Manages application navigation and screens.
+- `lib/screens/portfolio_tracker/`: Contains the UI and logic for tracking investments, displaying allocations, and managing the dynamic "Add Investment" modals.
+- `lib/screens/chat_advisor/`: The conversational interface where users interact with the AI. Includes the dynamic "Morning Brief" greeting sequence.
+- `lib/services/`: Handles secure API communication with the backend.
 
-### Prerequisites
+### Backend (Python FastAPI)
+Located in the `backend/` directory.
+- `backend/main.py`: The FastAPI application entry point, configuring CORS, database connections, and registering routers.
+- `backend/routers/greeting.py`: Powers the "Morning Brief". Calculates real-time portfolio P&L (daily and since-invested) and integrates with the heavyweight LLM for news sentiment analysis.
+- `backend/engine/`: Contains the core AI logic, including the multi-tier routing pipeline (`task_executor.py`, `llm_client.py`) and the offline planner integration.
+- `backend/services/stock_service.py`: Interfaces with `yfinance` to fetch real-time market data, historical prices, and relevant news headlines. Resolves both Indian (NSE) and US (NASDAQ/NYSE) ticker symbols.
+- `backend/database.py`: Manages the SQLite/Cloud SQL connections and schema migrations for persistent storage.
 
-- **Python 3.10+**
-- **Node.js 18+**
-- (Optional) **Ollama** or **llama.cpp** for LLM features
+## Prerequisites and Installation
 
-### 1. Start the Backend
+To run Chrysos locally, you must install the required dependencies for both the frontend and backend, as well as the local LLM runtime.
 
-```powershell
-cd backend
-pip install -r requirements.txt
-python main.py
-```
+### 1. Database and Environment
+The application currently utilizes SQLite for local development but is architected to support Google Cloud SQL. Ensure you have Python 3.10+ installed.
 
-Backend runs at `http://localhost:8000`. API docs at `http://localhost:8000/docs`.
+### 2. Local LLM (Ollama)
+Chrysos requires Ollama to run the offline task planner.
+1. Download and install Ollama from `https://ollama.com/`.
+2. Open a terminal and download the required model:
+   ```bash
+   ollama pull qwen
+   ```
+   *(Note: Adjust the tag to specifically pull `qwen3:1.7b` or the equivalent available small Qwen model depending on the Ollama registry.)*
+3. Ensure the Ollama service is running in the background.
 
-### 2. Start the Frontend
+### 3. Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Create and activate a Virtual Environment:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Configure Environment Variables:
+   Create a `.env` file in the `backend/` directory based on specific requirements. You will need obtaining API keys for LLM providers (e.g., Groq API key).
+   ```text
+   GROQ_API_KEY=your_api_key_here
+   ```
 
-```powershell
-cd frontend
-npm install
-npm run dev
-```
+### 4. Frontend Setup
+1. Ensure the Flutter SDK (version 3.x) is installed on your system.
+2. From the root of the project, fetch the Dart packages:
+   ```bash
+   flutter pub get
+   ```
 
-Frontend runs at `http://localhost:3000` (opens browser automatically).
+## Running the Application
 
-### 3. (Optional) Start an LLM
+To experience Chrysos, you must run both the backend server and the frontend client simultaneously.
 
-**Option A — Ollama:**
-```powershell
-ollama pull tinyllama
-ollama serve
-```
+### Starting the Backend
+1. Open a terminal and navigate to the `backend/` directory.
+2. Activate the virtual environment.
+3. Start the FastAPI server:
+   ```bash
+   python3 main.py
+   ```
+   The backend will be available at `http://localhost:8000`.
 
-**Option B — llama.cpp server:**
-```powershell
-./server -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf --port 8080
-```
+### Starting the Frontend
+1. Open a separate terminal in the root project directory.
+2. Run the Flutter application. For web development, use Chrome:
+   ```bash
+   flutter run -d chrome
+   ```
+   Alternatively, you can run it on iOS or Android simulators if properly configured:
+   ```bash
+   flutter run -d ios
+   ```
 
-**Option C — External API (Groq, OpenRouter, etc.):**
-Set environment variables before starting the backend:
-```powershell
-$env:LLM_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-$env:LLM_API_KEY = "your-api-key"
-$env:LLM_API_MODEL = "llama3-8b-8192"
-```
-
-> **Note:** The app works fully without any LLM — it falls back to the rule-based financial engine which provides deterministic, reliable advice.
-
----
-
-## 📱 Building Mobile APK (Capacitor)
-
-```powershell
-cd frontend
-
-# Build the web app
-npm run build
-
-# Initialize Capacitor (first time only)
-npx cap init "AI Money Mentor" "com.aimoneymentor.app" --web-dir dist
-
-# Add Android platform
-npx cap add android
-
-# Sync web assets to native project
-npx cap sync
-
-# Open in Android Studio
-npx cap open android
-```
-
-In Android Studio: **Build → Build Bundle(s) / APK(s) → Build APK(s)**
-
-For development with live reload, edit `capacitor.config.ts`:
-```typescript
-server: {
-  url: 'http://YOUR_PC_IP:3000',
-  cleartext: true,
-}
-```
-
----
-
-## ⚙️ Configuration
-
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `LLAMACPP_URL` | `http://localhost:8080` | llama.cpp server URL |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `tinyllama` | Ollama model name |
-| `LLM_API_URL` | (empty) | External API endpoint |
-| `LLM_API_KEY` | (empty) | External API key |
-| `LLM_API_MODEL` | (empty) | External API model name |
-
----
-
-## 💡 Sample Prompts to Try
-
-- "I just started my first job with ₹40k salary"
-- "I got ₹1 lakh bonus, what should I do?"
-- "How should I start investing?"
-- "Help me build an emergency fund"
-- "How can I save tax?"
-- "I have ₹5 lakh debt, how to repay?"
-- "What insurance do I need?"
-- "I want to save for a car"
-
----
-
-## 🔒 Privacy
-
-- All data stored locally in SQLite — no cloud sync
-- LLM inference runs locally (llama.cpp / Ollama)
-- No telemetry or analytics
-- Your financial data never leaves your device
+The application will launch, connect to the local backend, and initialize the AI routing pipeline to serve your financial queries.

@@ -1,5 +1,5 @@
 """
-AI Money Mentor — FIRE Calculator Router
+Chrysos — FIRE Calculator Router
 POST /api/fire — Calculate time to financial independence and monthly SIP projections.
 """
 from fastapi import APIRouter

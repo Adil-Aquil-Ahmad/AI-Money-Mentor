@@ -1,1 +1,1 @@
-# AI Money Mentor - Financial Engine Package
+# Chrysos - Financial Engine Package
