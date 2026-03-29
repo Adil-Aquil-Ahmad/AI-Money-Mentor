@@ -218,3 +218,7 @@ To experience Chrysos, you must run both the backend server and the frontend cli
    ```
 
 The application will launch, connect to the local backend, and initialize the AI routing pipeline to serve your financial queries.
+
+
+### SYSTEM ARCHITECTURE DIAGRAM
+![alt text](image.png)
