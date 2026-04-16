@@ -36,6 +36,7 @@ async def init_db():
             emergency_fund_months TEXT DEFAULT '0',
             risk_profile TEXT DEFAULT 'medium',
             goals TEXT DEFAULT '[]',
+            fcm_token TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -116,6 +117,46 @@ async def init_db():
             FOREIGN KEY (investment_id) REFERENCES current_investments(id)
         );
 
+        CREATE TABLE IF NOT EXISTS watchlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            stock_symbol TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, stock_symbol),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            stock_symbol TEXT NOT NULL,
+            type TEXT NOT NULL,
+            message TEXT NOT NULL,
+            confidence REAL DEFAULT 0.0,
+            is_read INTEGER DEFAULT 0,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_triggered_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS daily_greetings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            greeting_text TEXT NOT NULL,
+            date_str TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, date_str),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS stock_price_cache (
+            symbol TEXT PRIMARY KEY,
+            price REAL NOT NULL,
+            prev_close REAL,
+            date_str TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_current_investments_user_id
         ON current_investments(user_id);
 
@@ -124,7 +165,20 @@ async def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_portfolio_notifications_user_id
         ON portfolio_notifications(user_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_alerts_user_id
+        ON alerts(user_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_watchlist_user_id
+        ON watchlist(user_id);
     """)
+
+    # --- MIGRATIONS ---
+    # Safe migrations to dynamically add columns if running against an older mentor.db
+    try:
+        await db.execute("ALTER TABLE users ADD COLUMN fcm_token TEXT")
+    except Exception:
+        pass  # Column already exists
 
     # Seed a default user if table is empty (for unauthenticated dev mode)
     cursor = await db.execute("SELECT COUNT(*) FROM users")
@@ -134,3 +188,51 @@ async def init_db():
 
     await db.commit()
     await db.close()
+
+async def get_cached_greeting(user_id: int, date_str: str) -> str | None:
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT greeting_text FROM daily_greetings WHERE user_id = ? AND date_str = ?",
+            (user_id, date_str)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+    finally:
+        await db.close()
+
+async def set_cached_greeting(user_id: int, date_str: str, greeting_text: str):
+    db = await get_db()
+    try:
+        await db.execute(
+            "INSERT OR REPLACE INTO daily_greetings (user_id, greeting_text, date_str) VALUES (?, ?, ?)",
+            (user_id, greeting_text, date_str)
+        )
+        await db.commit()
+    finally:
+        await db.close()
+
+async def get_cached_stock_price(symbol: str) -> dict | None:
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "SELECT price, prev_close, date_str FROM stock_price_cache WHERE symbol = ? ORDER BY updated_at DESC LIMIT 1",
+            (symbol,)
+        )
+        row = await cursor.fetchone()
+        if row:
+            return {"price": row[0], "prev_close": row[1], "date_str": row[2]}
+        return None
+    finally:
+        await db.close()
+
+async def set_cached_stock_price(symbol: str, price: float, prev_close: float | None, date_str: str):
+    db = await get_db()
+    try:
+        await db.execute(
+            "INSERT OR REPLACE INTO stock_price_cache (symbol, price, prev_close, date_str) VALUES (?, ?, ?, ?)",
+            (symbol, price, prev_close, date_str)
+        )
+        await db.commit()
+    finally:
+        await db.close()

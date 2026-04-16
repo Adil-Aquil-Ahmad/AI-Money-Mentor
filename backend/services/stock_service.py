@@ -8,6 +8,7 @@ import re
 import logging
 import os
 from typing import Optional
+from queue_manager import add_log
 
 logger = logging.getLogger("stock_service")
 logger.setLevel(logging.DEBUG)
@@ -179,44 +180,54 @@ def extract_stock_names(message: str) -> list:
 
 async def get_stock_data(symbol: str) -> Optional[dict]:
     """
-    Fetch real-time stock data for a single symbol.
+    Fetch real-time stock data for a single symbol using a multi-tiered fallback strategy.
     Returns structured dict or None on failure.
     """
     import asyncio
-
-    # Check cache — return stale data if available and rate-limited
+    import httpx
+    
+    # Check cache
     now = time.time()
     if symbol in _cache:
         data, ts = _cache[symbol]
         if now - ts < _CACHE_TTL:
-            logger.info("Cache hit for %s", symbol)
             return data
 
     logger.info("Fetching live data for %s...", symbol)
-    try:
-        loop = asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, _fetch_sync, symbol)
-        if data:
-            _cache[symbol] = (data, now)
-        elif symbol in _cache:
-            # Return stale cache rather than None on failure
-            logger.warning("Returning stale cache for %s", symbol)
-            return _cache[symbol][0]
-        return data
-    except Exception as e:
-        logger.error("Failed to fetch %s: %s", symbol, e)
-        if symbol in _cache:
-            return _cache[symbol][0]  # stale is better than nothing
+    add_log(f"Fetching Live Market Data: [{symbol}]", "System", "info")
+    is_intl = symbol.endswith((".NS", ".BO"))
+    clean_symbol = symbol.replace('.NS', '').replace('.BO', '')
+    
+    async def fetch_massive() -> Optional[dict]:
+        massive_api_key = "sUsgxkVL4jX5zN4ymgRVGIyuaWZQPkbx"
+        url = f"https://api.massive.com/v2/aggs/ticker/{clean_symbol}/prev?apiKey={massive_api_key}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(url)
+            res.raise_for_status()
+            data = res.json()
+            if data.get("status") in ("OK", "DELAYED") and data.get("resultsCount", 0) > 0:
+                res_obj = data["results"][0]
+                price = res_obj.get("c", 0.0)
+                prev = res_obj.get("o", price)
+                change_pct = ((price - prev) / prev * 100) if prev else 0
+                trend = "upward" if change_pct > 0.5 else "downward" if change_pct < -0.5 else "flat"
+                return {
+                    "symbol": symbol,
+                    "name": clean_symbol,
+                    "price": round(price, 2),
+                    "prev_close": round(prev, 2) if prev else None,
+                    "change": round(price - prev, 2) if prev else None,
+                    "change_percent": round(change_pct, 2),
+                    "trend": trend,
+                    "volume": res_obj.get("v", 0),
+                    "sector": "Technology",
+                }
         return None
 
-
-def _fetch_sync(symbol: str) -> Optional[dict]:
-    """Synchronous yfinance fetch."""
-    try:
+    def fetch_yf_sync() -> Optional[dict]:
         yf = _prepare_yfinance()
         ticker = yf.Ticker(symbol)
         info = ticker.info
-
         if not info or info.get("regularMarketPrice") is None:
             # Try fast_info as fallback
             try:
@@ -235,60 +246,135 @@ def _fetch_sync(symbol: str) -> Optional[dict]:
                         "change_percent": round(change_pct, 2),
                         "trend": "upward" if change_pct > 0 else "downward" if change_pct < 0 else "flat",
                         "volume": getattr(fi, "last_volume", None),
+                        "sector": "Unknown"
                     }
             except Exception:
                 pass
             return None
-
+            
         price = info.get("regularMarketPrice") or info.get("currentPrice", 0)
         prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose", 0)
         change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0
-        market_cap = info.get("marketCap", 0)
-        pe_ratio = info.get("trailingPE") or info.get("forwardPE")
-        week52_high = info.get("fiftyTwoWeekHigh")
-        week52_low = info.get("fiftyTwoWeekLow")
-        name = info.get("shortName") or info.get("longName") or symbol
-        volume = info.get("regularMarketVolume") or info.get("volume")
-        sector = info.get("sector")
-
-        # Determine trend from recent history
-        trend = "flat"
-        if change_pct > 0.5:
-            trend = "upward"
-        elif change_pct < -0.5:
-            trend = "downward"
-
-        result = {
+        trend = "upward" if change_pct > 0.5 else "downward" if change_pct < -0.5 else "flat"
+        return {
             "symbol": symbol,
-            "name": name,
+            "name": info.get("shortName") or info.get("longName") or clean_symbol,
             "price": round(price, 2),
             "prev_close": round(prev_close, 2) if prev_close else None,
             "change": round(price - prev_close, 2) if prev_close else None,
             "change_percent": round(change_pct, 2),
             "trend": trend,
-            "volume": volume,
-            "sector": sector,
+            "volume": info.get("regularMarketVolume", 0),
+            "sector": info.get("sector"),
         }
 
-        if market_cap:
-            if market_cap >= 1e12:
-                result["market_cap"] = f"{market_cap/1e12:.1f}T"
-            elif market_cap >= 1e9:
-                result["market_cap"] = f"{market_cap/1e9:.1f}B"
-            else:
-                result["market_cap"] = f"{market_cap/1e7:.0f}Cr"
-
-        if pe_ratio:
-            result["pe_ratio"] = round(pe_ratio, 1)
-
-        if week52_high and week52_low:
-            result["52w_range"] = f"{week52_low:.0f} - {week52_high:.0f}"
-
-        return result
-
-    except Exception as e:
-        logger.error("yfinance error for %s: %s", symbol, e)
+    async def fetch_av() -> Optional[dict]:
+        av_key = "Q0CP2O3LZSFY6XTE"
+        # Wait for AV due to strict limits
+        await asyncio.sleep(1)
+        av_symbol = symbol.replace('.NS', '.BSE') if is_intl else symbol
+        url = f"https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={av_symbol}&apikey={av_key}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(url)
+            res.raise_for_status()
+            data = res.json()
+            if "Global Quote" in data and data["Global Quote"]:
+                quote = data["Global Quote"]
+                price = float(quote.get("05. price", 0))
+                prev = float(quote.get("08. previous close", price))
+                change_pct = float(quote.get("10. change percent", "0").replace("%", ""))
+                trend = "upward" if change_pct > 0.5 else "downward" if change_pct < -0.5 else "flat"
+                return {
+                    "symbol": symbol,
+                    "name": clean_symbol,
+                    "price": round(price, 2),
+                    "prev_close": round(prev, 2) if prev else None,
+                    "change": round(price - prev, 2) if prev else None,
+                    "change_percent": round(change_pct, 2),
+                    "trend": trend,
+                    "volume": int(quote.get("06. volume", 0)),
+                    "sector": "Unknown",
+                }
         return None
+
+    # Routing strategy
+    result = None
+    loop = asyncio.get_event_loop()
+    
+    if is_intl:
+        # Int: YFinance -> Alpha Vantage
+        try:
+            result = await loop.run_in_executor(None, fetch_yf_sync)
+        except Exception as e:
+            logger.warning("YF fallback for %s: %s", symbol, e)
+        if not result:
+            try:
+                result = await fetch_av()
+            except Exception as e:
+                logger.error("AV fallback failed for %s: %s", symbol, e)
+    else:
+        # US: Massive -> YFinance -> Alpha Vantage
+        try:
+            result = await fetch_massive()
+        except Exception as e:
+            logger.warning("Massive API error for %s: %s", symbol, e)
+        if not result:
+            try:
+                result = await loop.run_in_executor(None, fetch_yf_sync)
+            except Exception as e:
+                logger.warning("YF fallback for %s: %s", symbol, e)
+        if not result:
+            try:
+                result = await fetch_av()
+            except Exception as e:
+                logger.error("AV fallback failed for %s: %s", symbol, e)
+                
+    if result:
+        # User Directive: Convert all US holdings to INR by 92.9 multiplier
+        if not is_intl:
+            rate = 92.90
+            if result.get("price") is not None:
+                result["price"] = round(result["price"] * rate, 2)
+            if result.get("prev_close") is not None:
+                result["prev_close"] = round(result["prev_close"] * rate, 2)
+            if result.get("change") is not None:
+                result["change"] = round(result["change"] * rate, 2)
+                
+        _cache[symbol] = (result, now)
+        try:
+            from database import set_cached_stock_price
+            from datetime import datetime, timezone
+            date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+            await set_cached_stock_price(symbol, result.get("price", 0), result.get("prev_close"), date_str)
+        except Exception as e:
+            logger.error("Failed to sync stock price to DB cache: %s", e)
+        return result
+        
+    if symbol in _cache:
+        return _cache[symbol][0]
+        
+    # Terminal Fallback
+    try:
+        from database import get_cached_stock_price
+        cached = await get_cached_stock_price(symbol)
+        if cached:
+            logger.warning("Yielding OFFLINE database fallback for %s", symbol)
+            return {
+                "symbol": symbol,
+                "name": clean_symbol,
+                "price": cached["price"],
+                "prev_close": cached.get("prev_close"),
+                "change": None,
+                "change_percent": 0.0,
+                "trend": "flat",
+                "volume": 0,
+                "sector": "Offline",
+                "_is_offline": True,
+            }
+    except Exception as e:
+        logger.error("Offline DB fallback failed for %s: %s", symbol, e)
+        
+    return None
 
 
 async def get_multiple_stocks_data(symbols: list) -> list:
@@ -313,8 +399,9 @@ async def get_market_movers(limit: int = 5) -> list:
 
 
 async def get_stock_news(symbol: str, limit: int = 3) -> list:
-    """Fetch recent Yahoo Finance news items for a symbol."""
-    import asyncio
+    """Fetch recent news items for a symbol via NewsAPI."""
+    import httpx
+    from datetime import datetime, timedelta
 
     now = time.time()
     cache_key = f"{symbol}:{limit}"
@@ -325,33 +412,40 @@ async def get_stock_news(symbol: str, limit: int = 3) -> list:
             return data
 
     try:
-        loop = asyncio.get_event_loop()
-        news_items = await loop.run_in_executor(None, _fetch_news_sync, symbol, limit)
-        _news_cache[cache_key] = (news_items, now)
-        return news_items
+        # Prepare the query
+        clean_symbol = symbol.replace('.NS', '').replace('.BO', '')
+        # Try to resolve to full company name or use the symbol if not found
+        query = clean_symbol
+        for k, v in SYMBOL_MAP.items():
+            if v == symbol:
+                query = k
+                break
+                
+        # Only fetch news from the last 7 days
+        from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        
+        url = f"https://newsapi.org/v2/everything?q={query}&from={from_date}&sortBy=relevancy&apiKey=88a32572d97c4c6bbe6506310a8be9a3"
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            
+            items = []
+            for article in data.get("articles", [])[:limit]:
+                title = (article.get("title") or "").strip()
+                if not title or title == "[Removed]":
+                    continue
+                items.append({
+                    "headline": title.split(" - ")[0], # Cleanup trailing source
+                    "url": article.get("url"),
+                    "source": article.get("source", {}).get("name") or "NewsAPI",
+                    "published_at": article.get("publishedAt"),
+                })
+                
+            _news_cache[cache_key] = (items, now)
+            return items
+            
     except Exception as e:
         logger.error("Failed to fetch news for %s: %s", symbol, e)
-        return []
-
-
-def _fetch_news_sync(symbol: str, limit: int = 3) -> list:
-    """Synchronous yfinance news fetch."""
-    try:
-        yf = _prepare_yfinance()
-        ticker = yf.Ticker(symbol)
-        raw_news = getattr(ticker, "news", None) or []
-        items = []
-        for entry in raw_news[:limit]:
-            title = (entry.get("title") or "").strip()
-            if not title:
-                continue
-            items.append({
-                "headline": title,
-                "url": entry.get("link") or entry.get("canonicalUrl", {}).get("url"),
-                "source": entry.get("publisher") or "Yahoo Finance",
-                "published_at": entry.get("providerPublishTime"),
-            })
-        return items
-    except Exception as e:
-        logger.error("yfinance news error for %s: %s", symbol, e)
         return []

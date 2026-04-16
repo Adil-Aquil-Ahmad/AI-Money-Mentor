@@ -4,13 +4,14 @@ class ApiConfig {
   /// For development: http://localhost:8000
   /// For emulator (Android): http://10.0.2.2:8000
   /// For physical device: http://<your-ip>:8000
-  static const String baseUrl = 'http://localhost:8000/api';
+  static const String baseUrl = 'http://10.12.34.9:8000/api';
+  static const String wsUrl = 'ws://10.12.34.9:8000/api/dev';
   
   // For running on Android emulator, use this instead:
   // static const String baseUrl = 'http://10.0.2.2:8000/api';
   
   // For physical device, replace with your machine's IP and use:
-  // static const String baseUrl = 'http://<YOUR_IP>:8000/api';
+  // static const String baseUrl = 'http://10.12.113.193:8000/api';
 
   // API Endpoints
   static const String ping = '/ping';

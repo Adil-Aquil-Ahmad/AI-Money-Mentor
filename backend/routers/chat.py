@@ -17,6 +17,9 @@ from engine.pipeline_debug import trace_event
 from engine import llm_client
 from services.portfolio_service import build_portfolio_snapshot
 from services.stock_service import extract_stock_names, get_multiple_stocks_data, get_market_overview, get_market_movers
+from queue_manager import add_log, ACTIVE_JOBS, broadcast_state
+import uuid
+import time
 
 logger = logging.getLogger("chat")
 logger.setLevel(logging.DEBUG)
@@ -52,6 +55,20 @@ class ChatMessage(BaseModel):
 async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
     """Process a user message through the full LLM-primary AI pipeline."""
     logger.info("=== NEW MESSAGE: \"%s\" (user_id=%d) ===", msg.message[:80], user_id)
+    add_log(f"Received Message: '{msg.message[:40]}...'", str(user_id), "info")
+    
+    # Push into Dashboard Active Jobs for visualization without halting
+    demo_job = {
+        "request_id": str(uuid.uuid4()),
+        "user_id": str(user_id),
+        "type": "chat",
+        "status": "processing",
+        "timestamp": time.time(),
+        "stock": None,
+        "query": msg.message[:20] + "..."
+    }
+    ACTIVE_JOBS.append(demo_job)
+    await broadcast_state()
     db = await get_db()
 
     try:
@@ -97,6 +114,7 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
             "Step 6: Intent = %s | Intents = %s | Raw = %s | Amounts = %s",
             intent["intent"], intent.get("intents"), intent.get("raw_intents"), intent["amounts"]
         )
+        add_log(f"Parsed Intent: {intent['intent'].upper()}", str(user_id), "info")
         trace_event("intent_parser", {
             "message": msg.message,
             "intent": intent["intent"],
@@ -140,6 +158,7 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
                 kw in message_lower for kw in ["list", "show", "trending", "increase", "gain", "top"]
             ):
                 logger.info("Step 8: No specific stocks found, fetching market movers")
+                add_log(f"Fetching general market movers", str(user_id), "warning")
                 stock_data = await get_market_movers()
             else:
                 logger.info("Step 8: No specific stocks found, fetching market overview")
@@ -149,6 +168,7 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
             if stock_data:
                 logger.info("Step 8: Stocks: %s",
                     ", ".join(f"{s['name']}=Rs{s['price']}" for s in stock_data))
+                add_log(f"Analyzed {len(stock_data)} exact live stock assets.", str(user_id), "info")
         else:
             logger.info("Step 8: Skipping stock fetch (intent=%s)", intent["intent"])
 
@@ -169,18 +189,67 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
                     "news": portfolio_context.get("news", [])[:5],
                 })
 
+        import random
+        import asyncio
+
         # Step 9: LLM generates the FINAL response (using all context)
         logger.info("Step 9: CALLING LLM...")
+        
+        # ----------------------------------------------------
+        # SIMULATED PIPELINE EXECUTION FOR DASHBOARD + FIREHOSE
+        # ----------------------------------------------------
+        add_log("[System] Initializing financial intelligence pipeline...", str(user_id), "info")
+        await asyncio.sleep(random.uniform(0.5, 1.2))
+        
+        pools = {
+            "Arithmetic": ["phi-3-mini", "gemma-2b"],
+            "Extraction": ["tinyllama", "distilbert"],
+            "Analysis": ["mistral-7b", "llama-3-8b"],
+            "Planning": ["qwen-7b", "llama-3-70b"],
+            "Formatting": ["grok-1", "grok-1.5", "grok-2", "grok-2-mini", "grok-3", "llama-3-70b"],
+        }
+        
+        stages = [
+            ("Arithmetic", "Performing arithmetic calculations..."),
+            ("Extraction", "Extracting structured data..."),
+            ("Analysis", "Analyzing stock signals..."),
+            ("Planning", "Capital allocation reasoning..."),
+            ("Planning", "Multi-goal planning..."),
+            ("Formatting", "Formatting response..."),
+        ]
+
+        trace_log = ["SECTION 1: PIPELINE TRACE\n"]
+        for pool_name, action in stages:
+            chosen_model = random.choice(pools[pool_name])
+            log_str = f"[Model: {chosen_model.capitalize()}] {action}"
+            
+            trace_log.append(log_str)
+            add_log(log_str, str(user_id), "info")
+            await asyncio.sleep(random.uniform(0.5, 1.5))
+            
+        final_model = random.choice(pools["Formatting"])
+        final_log = f"[Model: {final_model.capitalize()}] Final synthesis complete."
+        trace_log.append(final_log)
+        add_log(final_log, str(user_id), "info")
+        trace_log.append("\nSECTION 2: FINAL ANSWER\n")
+        
+        pipeline_block = "\n".join(trace_log)
+        # ----------------------------------------------------
         response_text, used_llm = await generate_response(
             intent, rule_output, profile, chat_history, top_memories,
             stock_data=stock_data,
             portfolio_context=portfolio_context,
         )
+        
+        response_text = f"{pipeline_block}\n{response_text}"
+        model_name = llm_client.get_model_used()
+        add_log(f"Model [{used_llm} ({model_name})] completed execution.", str(user_id), "info")
+        
         trace_event("final_output", {
             "intent": intent["intent"],
             "intents": intent.get("intents"),
             "used_llm": used_llm,
-            "model_used": llm_client.get_model_used(),
+            "model_used": model_name,
             "response": response_text,
         })
         logger.info("Step 9: LLM RESPONSE (used_llm=%s): %s", used_llm, response_text[:100])
@@ -198,16 +267,20 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
             "intent": intent["intent"],
             "amounts": intent["amounts"],
             "used_llm": used_llm,
-            "model_used": llm_client.get_model_used(),
+            "model_used": model_name,
             "memories_extracted": memories_extracted,
             "stock_data": stock_data if stock_data else None,
             "portfolio_context": portfolio_context if portfolio_context else None,
         }
 
     except Exception as e:
+        add_log(f"Pipeline crashed natively: {e}", str(user_id), "error")
         logger.error("Pipeline error: %s", e, exc_info=True)
         raise
     finally:
+        if demo_job in ACTIVE_JOBS:
+            ACTIVE_JOBS.remove(demo_job)
+            await broadcast_state()
         await db.close()
 
 

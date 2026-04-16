@@ -8,7 +8,12 @@ import '../financial_profile/financial_profile_screen.dart';
 import '../health_score/health_score_screen.dart';
 import '../portfolio_tracker/portfolio_tracker_screen.dart';
 import '../fire_calculator/fire_calculator_screen.dart';
+import '../fire_calculator/fire_calculator_screen.dart';
 import '../what_if_simulator/what_if_simulator_screen.dart';
+import '../dev/dev_dashboard_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 // ── Nav model ─────────────────────────────────────────────────────────────────
 class NavItem {
@@ -42,6 +47,7 @@ class _MainLayoutState extends State<MainLayout> {
     NavItem(label: 'Portfolio', icon: Icons.pie_chart_outline, index: 3),
     NavItem(label: 'FIRE Calculator', icon: Icons.local_fire_department_outlined, index: 4),
     NavItem(label: 'What-If Simulator', icon: Icons.help_outline_rounded, index: 5),
+    NavItem(label: 'System Demo', icon: Icons.developer_board, index: 6),
   ];
 
   final List<Widget> _screens = const [
@@ -51,12 +57,40 @@ class _MainLayoutState extends State<MainLayout> {
     PortfolioTrackerScreen(),
     FireCalculatorScreen(),
     WhatIfSimulatorScreen(),
+    DevDashboardScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _setupPushNotifications();
+  }
+
+  Future<void> _setupPushNotifications() async {
+    try {
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        String? token = await messaging.getToken();
+        if (token != null) {
+          // Fire-and-forget backend register
+          // Using hardcoded dev user 1
+          http.post(
+            Uri.parse('http://0.0.0.0:8000/api/alerts/register_token'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({"user_id": 1, "token": token}),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("FCM Initialization gracefully skipped: $e");
+    }
   }
 
   void _updatePage(int index) {

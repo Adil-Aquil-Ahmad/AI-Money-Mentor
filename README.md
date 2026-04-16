@@ -28,9 +28,21 @@ The cornerstone of the Chrysos intelligence is its Multi-Tier LLM Routing System
    - **Advantage**: Balances deeper contextual understanding with reasonable inference speed.
 
 4. **Heavyweight Tier (High Intelligence & Synthesis)**
-   - **Model**: LLaMA 3.3 70B (via Groq)
+   - **Model**: LLaMA 3.3 70B (via Groq) / Grok-2
    - **Role**: Reserved for complex synthesis and deep analysis. It handles tasks such as sentiment analysis on market news (e.g., determining if recent headlines about a stock are bullish or bearish) and formulating the final, comprehensive response to the user.
    - **Advantage**: Superior reasoning, nuance detection, and high-quality natural language generation.
+
+### Artificial Intelligence Machine Learning Module (PyTorch)
+Located inside `backend/ml/`, the system employs a native deep-learning mechanism built with **PyTorch**. 
+- **Portfolio Recommender Engine**: A neural network that directly parses SQLite database holdings (`amount_invested`, `avg_price`, `quantity`), automatically normalizes features, and trains weights against synthetic performance benchmarks.
+- **Model Storage**: Compiles a `.pt` file (`financial_recommender.pt`) serialized locally for high-speed offline inference without external API routing.
+
+### Integrated Data APIs
+The AI pipelines are continuously fed live metrics natively utilizing:
+- **yfinance**: For fetching real-time stock data, tickers, and trailing market history at zero LLM parsing cost.
+- **News API / G News**: Supplies global and localized real-time financial headlines allowing the Heavyweight models to perform deep live sentiment parsing natively using aggregated search articles.
+- **PyTrends**: Hooks into Google Search momentum indicators mapping keyword volume directly into actionable portfolio strategy vectors.
+- **Massive API**: Leverages deep market aggregation endpoints to structurally pipe macroeconomic shifts directly into the routing layer.
 
 ## Codebase Architecture
 

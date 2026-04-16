@@ -115,15 +115,33 @@ async def get_notifications(user_id: int = Depends(get_current_user), limit: int
 async def create_investment(payload: InvestmentPayload, user_id: int = Depends(get_current_user)):
     db = await get_db()
     try:
+        norm_type = normalize_asset_type(payload.type)
+        resolved_sym = payload.symbol.strip() if payload.symbol else None
+        
+        # Dynamically map missing quantitative values
+        if norm_type in ("stock", "crypto", "mutual_fund") and resolved_sym:
+            if not payload.avg_price or not payload.quantity:
+                from services.stock_service import get_stock_data, resolve_symbol
+                fetch_sym = resolve_symbol(resolved_sym) or resolved_sym
+                price_data = await get_stock_data(fetch_sym)
+                if price_data and price_data.get("price"):
+                    current_price = price_data["price"]
+                    if payload.amount_invested > 0 and not payload.avg_price:
+                        payload.avg_price = current_price
+                        payload.quantity = payload.amount_invested / current_price
+                    elif payload.quantity and payload.quantity > 0 and not payload.amount_invested:
+                        payload.avg_price = current_price
+                        payload.amount_invested = payload.quantity * current_price
+                
         cursor = await db.execute(
             "INSERT INTO current_investments "
             "(user_id, type, name, symbol, amount_invested, quantity, avg_price, sip_amount, purchase_date, currency, meta_json) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 user_id,
-                normalize_asset_type(payload.type),
+                norm_type,
                 payload.name.strip(),
-                (payload.symbol or "").strip() or None,
+                resolved_sym,
                 payload.amount_invested,
                 payload.quantity,
                 payload.avg_price,

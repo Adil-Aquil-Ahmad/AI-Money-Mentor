@@ -7,7 +7,11 @@ Tiers (weakest → strongest):
   midweight    → llama-4-scout-17b       (structured reasoning)
   heavyweight  → llama-3.3-70b-versatile (final synthesis, deep advice)
   offline      → qwen3:1.7b / Ollama    (decomposition only, free)
-  data_api     → yfinance               (live stock data, zero LLM cost)
+  data_api     → yfinance               (live stock data tickers, zero LLM cost)
+                 News API               (global real-time financial news)
+                 G News                 (localized aggregated search articles)
+                 PyTrends               (Google Search momentum indicators)
+                 Massive API            (deep market aggregation data)
 """
 import os
 import logging

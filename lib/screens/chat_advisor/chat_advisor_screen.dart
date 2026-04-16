@@ -52,8 +52,40 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_disposed) return;
       _checkBackendConnection();
-      _loadGreeting();
+      _loadHistoryAndGreeting();
     });
+  }
+
+  Future<void> _loadHistoryAndGreeting() async {
+    try {
+      final result = await apiService.get<Map<String, dynamic>>(
+        '/chat/history?user_id=1',
+        requireAuth: false,
+      );
+      if (_disposed || !mounted) return;
+      
+      final historyList = result['messages'] as List? ?? [];
+      
+      if (historyList.isNotEmpty) {
+        List<Message> loadedHistory = historyList.map((msg) {
+          return Message(
+            id: msg['id'].toString(),
+            role: msg['role'] == 'assistant' ? 'advisor' : msg['role'],
+            text: msg['content'] ?? '',
+          );
+        }).toList();
+        
+        setState(() {
+          messages = loadedHistory;
+        });
+        _scrollToBottom();
+      } else {
+        await _loadGreeting();
+      }
+    } catch (e) {
+      debugPrint("History load failed: $e, falling back to greeting");
+      await _loadGreeting();
+    }
   }
 
   Future<void> _checkBackendConnection() async {
@@ -234,7 +266,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   }
 
 
-  void _clearChat() {
+  void _clearChat() async {
+    try {
+      await apiService.delete('/chat/history?user_id=1', requireAuth: false);
+    } catch (e) {
+      debugPrint("Failed to clear backend DB: $e");
+    }
+    
+    if (_disposed || !mounted) return;
     setState(() {
       messages = [
         Message(

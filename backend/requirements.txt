@@ -5,3 +5,4 @@ aiosqlite==0.19.0
 httpx==0.26.0
 python-multipart==0.0.6
 yfinance==0.2.54
+pytrends==4.9.2
