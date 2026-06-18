@@ -9,12 +9,13 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyCxAPmHuMJaF3JcAGu5jrQ5g0CCxyE6Fow",
-        appId: "1:799138795500:ios:5726fcd8bbb76480f4bac9", // mapped implicitly for dev
+        apiKey: "AIzaSyB7dlKnHn95bw_zok1GmvlfYKQzn5Jrkwo",
+        appId: "1:799138795500:web:c2d0803323cab2b2f4bac9",
         messagingSenderId: "799138795500",
         projectId: "ai-study-mentor-8e9d1",
         authDomain: "ai-study-mentor-8e9d1.firebaseapp.com",
         storageBucket: "ai-study-mentor-8e9d1.firebasestorage.app",
+        measurementId: "G-0QQGHK4HVP",
       ),
     );
   } else {
