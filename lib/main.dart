@@ -9,8 +9,8 @@ void main() async {
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: const FirebaseOptions(
-        apiKey: "AIzaSyB7dlKnHn95bw_zok1GmvlfYKQzn5Jrkwo",
-        appId: "1:799138795500:web:c2d0803323cab2b2f4bac9",
+        apiKey: String.fromEnvironment('FIREBASE_WEB_API_KEY', defaultValue: ''),
+        appId: String.fromEnvironment('FIREBASE_WEB_APP_ID', defaultValue: ''),
         messagingSenderId: "799138795500",
         projectId: "ai-study-mentor-8e9d1",
         authDomain: "ai-study-mentor-8e9d1.firebaseapp.com",
