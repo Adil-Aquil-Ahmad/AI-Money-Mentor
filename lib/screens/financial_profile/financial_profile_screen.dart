@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/app_colors.dart';
@@ -111,18 +112,22 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
         final token = await user.getIdToken();
         if (token != null) apiService.setAuthToken(token);
       }
-      // E2EE Envelope creation for sensitive numerics
+      // On web, skip client-side encryption (AES-GCM SecureRandom unreliable in browser).
+      // The backend stores strings as-is; unwrap() handles plain values gracefully.
+      Future<String> maybeWrap(String v) =>
+          kIsWeb ? Future.value(v) : EncryptionService.wrap(v);
+
       final payload = {
         'name': profile.name,
-        'age': await EncryptionService.wrap(profile.age.toString()),
-        'monthly_income': await EncryptionService.wrap(profile.income.toString()),
-        'monthly_expenses': await EncryptionService.wrap(profile.expenses.toString()),
-        'current_savings': await EncryptionService.wrap(profile.savings.toString()),
-        'current_investments': await EncryptionService.wrap(profile.investments.toString()),
-        'current_debt': await EncryptionService.wrap(profile.debt.toString()),
-        'emergency_fund_months': await EncryptionService.wrap(profile.emergencyMonths.toString()),
-        'has_emergency_fund': await EncryptionService.wrap((profile.emergencyMonths > 0).toString()),
-        'has_insurance': await EncryptionService.wrap(profile.hasInsurance.toString()),
+        'age': await maybeWrap(profile.age.toString()),
+        'monthly_income': await maybeWrap(profile.income.toString()),
+        'monthly_expenses': await maybeWrap(profile.expenses.toString()),
+        'current_savings': await maybeWrap(profile.savings.toString()),
+        'current_investments': await maybeWrap(profile.investments.toString()),
+        'current_debt': await maybeWrap(profile.debt.toString()),
+        'emergency_fund_months': await maybeWrap(profile.emergencyMonths.toString()),
+        'has_emergency_fund': await maybeWrap((profile.emergencyMonths > 0).toString()),
+        'has_insurance': await maybeWrap(profile.hasInsurance.toString()),
         'goals': [profile.goals],
         'risk_profile': profile.riskProfile.toLowerCase(),
       };
@@ -140,11 +145,12 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Profile save error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile saved locally (backend offline)'),
+          SnackBar(
+            content: Text('Save failed: $e'),
             backgroundColor: AppColors.warning,
           ),
         );
