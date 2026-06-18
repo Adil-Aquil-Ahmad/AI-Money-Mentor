@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_colors.dart';
@@ -139,13 +140,22 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
 
   // ─── API ───────────────────────────────────────────────────────────────────
 
+  Future<void> _ensureAuth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      if (token != null) apiService.setAuthToken(token);
+    }
+  }
+
   Future<void> _loadPortfolio() async {
     if (_disposed || !mounted) return;
     setState(() => _isLoading = true);
     try {
+      await _ensureAuth();
       final snap = await apiService.get<Map<String, dynamic>>(
         '/investments/portfolio',
-        requireAuth: false,
+        requireAuth: true,
       );
       if (_disposed || !mounted) return;
       _applySnapshot(snap);
@@ -244,7 +254,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
   Future<void> _deleteInvestment(Investment inv) async {
     if (inv.id == null) return;
     try {
-      await apiService.delete('/investments/${inv.id}', requireAuth: false);
+      await apiService.delete('/investments/${inv.id}', requireAuth: true);
       if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {
       if (_disposed || !mounted) return;
@@ -254,7 +264,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
 
   Future<void> _addInvestment(Map<String, dynamic> payload) async {
     try {
-      await apiService.post('/investments', body: payload, requireAuth: false);
+      await apiService.post('/investments', body: payload, requireAuth: true);
       if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {
       if (_disposed || !mounted) return;
@@ -269,7 +279,7 @@ class _PortfolioTrackerScreenState extends State<PortfolioTrackerScreen>
 
   Future<void> _updateInvestment(int id, Map<String, dynamic> payload) async {
     try {
-      await apiService.put('/investments/$id', body: payload, requireAuth: false);
+      await apiService.put('/investments/$id', body: payload, requireAuth: true);
       if (!_disposed && mounted) await _loadPortfolio();
     } catch (_) {}
   }

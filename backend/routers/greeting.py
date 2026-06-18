@@ -3,12 +3,13 @@ import logging
 import json
 import math
 from datetime import datetime, timezone
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from pydantic import BaseModel
 
 from services.stock_service import get_stock_data, get_stock_news, resolve_symbol
 from services.intelligence_service import get_finance_intelligence
 from database import get_db, get_cached_greeting, set_cached_greeting
+from auth_middleware import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger("greeting")
@@ -28,7 +29,7 @@ class GreetingResponse(BaseModel):
     has_portfolio: bool
 
 @router.get("/api/chat/greeting", response_model=GreetingResponse)
-async def get_greeting(user_id: int = Query(default=1), force_refresh: bool = Query(default=False)):
+async def get_greeting(user_id: int = Depends(get_current_user), force_refresh: bool = Query(default=False)):
     """
     Called once when the app opens. Returns:
     - Per-asset P&L (today's change + since-invested change + sentiment/trends)

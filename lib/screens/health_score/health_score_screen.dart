@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../components/common/glass_card.dart';
@@ -91,12 +92,21 @@ class _HealthScoreScreenState extends State<HealthScoreScreen>
     _loadHealthScore();
   }
 
+  Future<void> _ensureAuth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      if (token != null) apiService.setAuthToken(token);
+    }
+  }
+
   Future<void> _loadHealthScore() async {
     setState(() => _isLoading = true);
     try {
+      await _ensureAuth();
       final result = await apiService.get<Map<String, dynamic>>(
         '/health-score',
-        requireAuth: false,
+        requireAuth: true,
       );
       if (result['score'] != null) {
         final newScore = (result['score'] as num).toInt();

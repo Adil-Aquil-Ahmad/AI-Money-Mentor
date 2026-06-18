@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/app_colors.dart';
 import '../../components/common/glass_card.dart';
 import '../../models/message.dart';
@@ -56,11 +57,20 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     });
   }
 
+  Future<void> _ensureAuth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      if (token != null) apiService.setAuthToken(token);
+    }
+  }
+
   Future<void> _loadHistoryAndGreeting() async {
     try {
+      await _ensureAuth();
       final result = await apiService.get<Map<String, dynamic>>(
-        '/chat/history?user_id=1',
-        requireAuth: false,
+        '/chat/history',
+        requireAuth: true,
       );
       if (_disposed || !mounted) return;
       
@@ -108,8 +118,8 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
   Future<void> _loadGreeting() async {
     try {
       final result = await apiService.get<Map<String, dynamic>>(
-        '/chat/greeting?user_id=1',
-        requireAuth: false,
+        '/chat/greeting',
+        requireAuth: true,
       );
       if (_disposed || !mounted) return;
       final greetingText = result['greeting'] as String? ?? '';
@@ -191,12 +201,13 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
     _scrollToBottom();
 
     try {
-      // 1. Fetch Encrypted Profile
+      await _ensureAuth();
+      // 1. Fetch profile
       Map<String, dynamic> rawProfile = {};
       try {
         rawProfile = await apiService.get<Map<String, dynamic>>(
           ApiConfig.profile,
-          requireAuth: false,
+          requireAuth: true,
         );
       } catch (_) {}
 
@@ -226,14 +237,14 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
 
       // 3. Call backend API with the Transient Profile
       final response = await apiService.post<ChatMessageResponse>(
-        '/chat', // Fixed endpoint to match FastAPI @router.post("/chat")
+        '/chat',
         body: ChatMessageRequest(
-          userId: 'user_123', // TODO: Replace with actual user ID
+          userId: FirebaseAuth.instance.currentUser?.uid ?? '',
           message: messageText,
           transientProfile: transientProfile,
         ).toJson(),
         fromJson: (json) => ChatMessageResponse.fromJson(json),
-        requireAuth: false,
+        requireAuth: true,
       );
 
       final advisorMessage = Message(
@@ -268,7 +279,8 @@ class _ChatAdvisorScreenState extends State<ChatAdvisorScreen> {
 
   void _clearChat() async {
     try {
-      await apiService.delete('/chat/history?user_id=1', requireAuth: false);
+      await _ensureAuth();
+      await apiService.delete('/chat/history', requireAuth: true);
     } catch (e) {
       debugPrint("Failed to clear backend DB: $e");
     }

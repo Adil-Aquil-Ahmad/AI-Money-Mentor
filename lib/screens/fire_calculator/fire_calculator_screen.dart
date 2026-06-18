@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_colors.dart';
@@ -87,9 +88,18 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
     });
   }
 
+  Future<void> _ensureAuth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      if (token != null) apiService.setAuthToken(token);
+    }
+  }
+
   Future<void> _runCalculation() async {
     setState(() => _isLoading = true);
     try {
+      await _ensureAuth();
       final result = await apiService.post<Map<String, dynamic>>(
         '/fire',
         body: {
@@ -100,7 +110,7 @@ class _FireCalculatorScreenState extends State<FireCalculatorScreen> {
           'monthly_expenses': expenses,
           'inflation_rate': 6.0,
         },
-        requireAuth: false,
+        requireAuth: true,
       );
       final projection = (result['projection'] as List<dynamic>?) ?? [];
       setState(() {

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:ui';
@@ -80,6 +81,14 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
 
   // ─── Simulation ─────────────────────────────────────────────────────────────
 
+  Future<void> _ensureAuth() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken();
+      if (token != null) apiService.setAuthToken(token);
+    }
+  }
+
   Future<void> _simulate() async {
     setState(() {
       _isLoading = true;
@@ -87,6 +96,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
       _chartData = [];
     });
 
+    await _ensureAuth();
     // Build payload matching backend WhatIfScenario model
     final payload = <String, dynamic>{
       'scenario_type': _scenario.apiKey,
@@ -104,7 +114,7 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
       final res = await apiService.post<Map<String, dynamic>>(
         '/whatif',
         body: payload,
-        requireAuth: false,
+        requireAuth: true,
       ).timeout(const Duration(seconds: 2)); // Very short timeout to prevent UI freeze
       _applyResult(res);
     } catch (_) {
