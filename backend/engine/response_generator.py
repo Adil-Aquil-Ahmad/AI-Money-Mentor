@@ -36,7 +36,7 @@ async def generate_response(
     Falls back to single-pass if router fails or flag is disabled.
     """
     # ── Check deterministic strict template first (always fastest) ────────────
-    strict_response = strict_template_response(intent, profile, rule_output, stock_data or [])
+    strict_response = strict_template_response(intent, profile, rule_output, stock_data or [], portfolio_context)
     if strict_response:
         llm_client.set_model_used("strict-template")
         trace_event("strict_template", {

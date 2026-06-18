@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/app_colors.dart';
 import '../../components/common/glass_card.dart';
 import '../../components/common/custom_input_field.dart';
@@ -476,73 +478,78 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
           ),
         ),
         // Save and Actions Section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Left side actions (Theme + Logout)
             Row(
               children: [
-                GestureDetector(
-                  onTap: () => AppTheme.toggleTheme(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.getGlassBg(isDark, 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.getBorder(isDark, 0.1)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                            color: AppColors.getTextPrimary(isDark), size: 18),
-                        const SizedBox(width: 8),
-                        Text(isDark ? 'Light Mode' : 'Dark Mode',
-                            style: TextStyle(
-                                color: AppColors.getTextPrimary(isDark),
-                                fontWeight: FontWeight.bold)),
-                      ],
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => AppTheme.toggleTheme(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.getGlassBg(isDark, 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.getBorder(isDark, 0.1)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                              color: AppColors.getTextPrimary(isDark), size: 18),
+                          const SizedBox(width: 8),
+                          Text(isDark ? 'Light Mode' : 'Dark Mode',
+                              style: TextStyle(
+                                  color: AppColors.getTextPrimary(isDark),
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: () => Navigator.pushReplacementNamed(context, '/login'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF87171).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF87171).withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.logout, color: Color(0xFFF87171), size: 18),
-                        const SizedBox(width: 8),
-                        const Text('Logout',
-                            style: TextStyle(
-                                color: Color(0xFFF87171),
-                                fontWeight: FontWeight.bold)),
-                      ],
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      try { await GoogleSignIn().signOut(); } catch (_) {}
+                      await FirebaseAuth.instance.signOut();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF87171).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF87171).withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.logout, color: Color(0xFFF87171), size: 18),
+                          SizedBox(width: 8),
+                          Text('Logout',
+                              style: TextStyle(
+                                  color: Color(0xFFF87171),
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            // Right side save
-            SizedBox(
-              width: 200,
-              child: CustomButton(
-                text: _isSaving ? 'Saving...' : 'Save Profile',
-                onPressed: _isSaving ? () {} : _saveProfile,
-                leadingIcon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.check_circle, color: Colors.white),
-              ),
+            const SizedBox(height: 12),
+            CustomButton(
+              text: _isSaving ? 'Saving...' : 'Save Profile',
+              onPressed: _isSaving ? () {} : _saveProfile,
+              leadingIcon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.check_circle, color: Colors.white),
             ),
           ],
         ),

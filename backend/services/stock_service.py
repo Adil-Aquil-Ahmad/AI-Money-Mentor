@@ -1,7 +1,7 @@
 """
 Chrysos — Stock Service
-Fetches real-time stock data via yfinance.
-Includes 5-minute in-memory caching to avoid API rate limits.
+Fetches real-time stock data via yfinance (Indian stocks) and Massive/Alpha Vantage (US stocks).
+Includes 10-minute in-memory caching to avoid rate limits.
 """
 import time
 import re
@@ -22,8 +22,7 @@ if not logger.handlers:
 # ── In-memory cache (symbol → (data, timestamp)) ──
 _cache: dict = {}
 _news_cache: dict = {}
-_CACHE_TTL = 600  # 10 minutes (avoids yfinance rate limits during normal use)
-_YF_READY = False
+_CACHE_TTL = 600  # 10 minutes (avoids Massive API rate limits during normal use)
 
 # ── Common Indian stock symbols (NSE) ──
 SYMBOL_MAP = {
@@ -135,6 +134,9 @@ def resolve_symbol(name: str) -> Optional[str]:
     return _resolve_symbol(name)
 
 
+_YF_READY = False
+
+
 def _prepare_yfinance():
     """Configure yfinance to use a writable cache location."""
     global _YF_READY
@@ -224,50 +226,6 @@ async def get_stock_data(symbol: str) -> Optional[dict]:
                 }
         return None
 
-    def fetch_yf_sync() -> Optional[dict]:
-        yf = _prepare_yfinance()
-        ticker = yf.Ticker(symbol)
-        info = ticker.info
-        if not info or info.get("regularMarketPrice") is None:
-            # Try fast_info as fallback
-            try:
-                fi = ticker.fast_info
-                price = getattr(fi, "last_price", None)
-                prev = getattr(fi, "previous_close", None)
-                if price:
-                    change_pct = ((price - prev) / prev * 100) if prev else 0
-                    change_abs = round(price - prev, 2) if prev else None
-                    return {
-                        "symbol": symbol,
-                        "name": symbol.replace(".NS", "").replace("^", ""),
-                        "price": round(price, 2),
-                        "prev_close": round(prev, 2) if prev else None,
-                        "change": change_abs,
-                        "change_percent": round(change_pct, 2),
-                        "trend": "upward" if change_pct > 0 else "downward" if change_pct < 0 else "flat",
-                        "volume": getattr(fi, "last_volume", None),
-                        "sector": "Unknown"
-                    }
-            except Exception:
-                pass
-            return None
-            
-        price = info.get("regularMarketPrice") or info.get("currentPrice", 0)
-        prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose", 0)
-        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0
-        trend = "upward" if change_pct > 0.5 else "downward" if change_pct < -0.5 else "flat"
-        return {
-            "symbol": symbol,
-            "name": info.get("shortName") or info.get("longName") or clean_symbol,
-            "price": round(price, 2),
-            "prev_close": round(prev_close, 2) if prev_close else None,
-            "change": round(price - prev_close, 2) if prev_close else None,
-            "change_percent": round(change_pct, 2),
-            "trend": trend,
-            "volume": info.get("regularMarketVolume", 0),
-            "sector": info.get("sector"),
-        }
-
     async def fetch_av() -> Optional[dict]:
         av_key = "Q0CP2O3LZSFY6XTE"
         # Wait for AV due to strict limits
@@ -297,12 +255,54 @@ async def get_stock_data(symbol: str) -> Optional[dict]:
                 }
         return None
 
+    def fetch_yf_sync() -> Optional[dict]:
+        yf = _prepare_yfinance()
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        if not info or info.get("regularMarketPrice") is None:
+            try:
+                fi = ticker.fast_info
+                price = getattr(fi, "last_price", None)
+                prev = getattr(fi, "previous_close", None)
+                if price:
+                    change_pct = ((price - prev) / prev * 100) if prev else 0
+                    change_abs = round(price - prev, 2) if prev else None
+                    return {
+                        "symbol": symbol,
+                        "name": symbol.replace(".NS", "").replace("^", ""),
+                        "price": round(price, 2),
+                        "prev_close": round(prev, 2) if prev else None,
+                        "change": change_abs,
+                        "change_percent": round(change_pct, 2),
+                        "trend": "upward" if change_pct > 0 else "downward" if change_pct < 0 else "flat",
+                        "volume": getattr(fi, "last_volume", None),
+                        "sector": "Unknown"
+                    }
+            except Exception:
+                pass
+            return None
+        price = info.get("regularMarketPrice") or info.get("currentPrice", 0)
+        prev_close = info.get("regularMarketPreviousClose") or info.get("previousClose", 0)
+        change_pct = ((price - prev_close) / prev_close * 100) if prev_close else 0
+        trend = "upward" if change_pct > 0.5 else "downward" if change_pct < -0.5 else "flat"
+        return {
+            "symbol": symbol,
+            "name": info.get("shortName") or info.get("longName") or clean_symbol,
+            "price": round(price, 2),
+            "prev_close": round(prev_close, 2) if prev_close else None,
+            "change": round(price - prev_close, 2) if prev_close else None,
+            "change_percent": round(change_pct, 2),
+            "trend": trend,
+            "volume": info.get("regularMarketVolume", 0),
+            "sector": info.get("sector"),
+        }
+
     # Routing strategy
     result = None
     loop = asyncio.get_event_loop()
-    
+
     if is_intl:
-        # Int: YFinance -> Alpha Vantage
+        # Indian/international: yfinance (accurate NSE data) → Alpha Vantage
         try:
             result = await loop.run_in_executor(None, fetch_yf_sync)
         except Exception as e:
@@ -313,7 +313,7 @@ async def get_stock_data(symbol: str) -> Optional[dict]:
             except Exception as e:
                 logger.error("AV fallback failed for %s: %s", symbol, e)
     else:
-        # US: Massive -> YFinance -> Alpha Vantage
+        # US stocks: Massive API → yfinance → Alpha Vantage
         try:
             result = await fetch_massive()
         except Exception as e:
@@ -391,7 +391,7 @@ async def get_market_overview() -> list:
 
 
 async def get_market_movers(limit: int = 5) -> list:
-    """Fetch a simple top-movers list from a stable basket using yfinance."""
+    """Fetch a simple top-movers list from a stable basket using Massive API."""
     results = await get_multiple_stocks_data(MOVER_CANDIDATES)
     positive = [item for item in results if item.get("change_percent") is not None]
     positive.sort(key=lambda item: item.get("change_percent", 0), reverse=True)

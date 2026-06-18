@@ -42,16 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passCtrl.text,
         );
       }
-      
-      bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? _isSignUp;
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/',
-          arguments: isNewUser ? 1 : 0,
-        );
-      }
+      if (mounted) Navigator.of(context).pushReplacementNamed('/');
     } catch (e, stack) {
       debugPrint('Login Error: $e\n$stack');
       if (mounted) {
@@ -67,45 +58,62 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInWithGoogle() async {
     setState(() => _isGoogleLoading = true);
+    final gSignIn = GoogleSignIn(
+      clientId: '799138795500-8bb7n7e5moq13n1g8asi8v6ulvkr13kv.apps.googleusercontent.com',
+    );
     try {
       if (kIsWeb) {
         final provider = GoogleAuthProvider();
-        UserCredential userCred = await FirebaseAuth.instance.signInWithPopup(provider);
-        bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
-
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/',
-            arguments: isNewUser ? 1 : 0,
-          );
-        }
+        await FirebaseAuth.instance.signInWithPopup(provider);
+        // AuthWrapper's StreamBuilder handles navigation on auth state change.
       } else {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser != null) {
-          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-          final credential = GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
-            idToken: googleAuth.idToken,
-          );
-          UserCredential userCred = await FirebaseAuth.instance.signInWithCredential(credential);
-          bool isNewUser = userCred.additionalUserInfo?.isNewUser ?? false;
-
+        // Clear stale session so account picker always shows fresh
+        try { await gSignIn.signOut(); } catch (_) {}
+        final GoogleSignInAccount? googleUser = await gSignIn.signIn();
+        if (googleUser == null) {
           if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/',
-              arguments: isNewUser ? 1 : 0,
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Google Sign-In was cancelled or failed. Please try again.'),
+                duration: Duration(seconds: 4),
+              ),
             );
           }
+          return;
         }
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        if (googleAuth.idToken == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Google Sign-In failed: could not get ID token. Try email/password instead.'),
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+          return;
+        }
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+        if (mounted) Navigator.of(context).pushReplacementNamed('/');
       }
     } catch (e, stack) {
       debugPrint('Google Sign-In Error: $e\n$stack');
       if (mounted) {
-        final msg = e is FirebaseAuthException ? (e.message ?? 'Google Sign-In failed') : 'Google Sign-In error: $e';
+        final String msg;
+        if (e is FirebaseAuthException) {
+          msg = e.message ?? 'Google Sign-In failed';
+        } else if (e.toString().toLowerCase().contains('keychain') ||
+            e.toString().contains('InvalidCipherText')) {
+          msg = 'Google Sign-In keychain error. Try signing in with email/password instead.';
+        } else {
+          msg = 'Google Sign-In failed. Please try again.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg)),
+          SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
         );
       }
     } finally {
@@ -128,15 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? _buildMobileLayout(isDark) 
                 : _buildDesktopLayout(isDark),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => AppTheme.toggleTheme(),
-        backgroundColor: AppColors.getGlassBg(isDark, 0.1),
-        elevation: 0,
-        child: Icon(
-          isDark ? Icons.light_mode : Icons.dark_mode,
-          color: AppColors.getTextPrimary(isDark),
         ),
       ),
     );

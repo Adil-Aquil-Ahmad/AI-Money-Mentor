@@ -1,7 +1,7 @@
 """
 Chrysos — Task Decomposer (Multi-Router Step 1)
-Uses Qwen3 1.7B (offline, via Ollama) to parse a user query into structured subtasks.
-Falls back to regex-based rule decomposition if Ollama is unavailable.
+Uses lightweight Groq model to parse a user query into structured subtasks.
+Falls back to regex-based rule decomposition if Groq is unavailable.
 
 Subtask Types:
   data_fetch   → pull live data (yfinance, APIs)  — no LLM cost
@@ -25,8 +25,9 @@ if not logger.handlers:
     ))
     logger.addHandler(handler)
 
-OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:1.7b")
+GROQ_URL   = os.getenv("LLM_API_URL",   "https://api.groq.com/openai/v1/chat/completions")
+GROQ_KEY   = os.getenv("LLM_API_KEY",   "")
+GROQ_DECOMPOSE_MODEL = os.getenv("LLM_LIGHTWEIGHT", "llama-3.1-8b-instant")
 
 # ── JSON schema for a decomposed task list ──────────────────────────────────
 TASK_SCHEMA = {
@@ -83,56 +84,54 @@ Output ONLY the raw JSON with a "tasks" array. No explanation, no markdown, no p
 async def decompose_query(message: str) -> list[dict]:
     """
     Decompose a user query into structured subtasks.
-    Tries Qwen3 1.7B offline first; falls back to rule-based decomposition.
+    Tries Groq lightweight model first; falls back to rule-based decomposition.
     """
-    offline_result = await _decompose_with_qwen3(message)
-    if offline_result:
-        logger.info("Decomposed via Qwen3 1.7B → %d subtasks", len(offline_result))
-        return offline_result
+    groq_result = await _decompose_with_groq(message)
+    if groq_result:
+        logger.info("Decomposed via Groq (%s) → %d subtasks", GROQ_DECOMPOSE_MODEL, len(groq_result))
+        return groq_result
 
     rule_result = _decompose_with_rules(message)
-    logger.info("Decomposed via rules (Qwen3 unavailable) → %d subtasks", len(rule_result))
+    logger.info("Decomposed via rules (Groq unavailable) → %d subtasks", len(rule_result))
     return rule_result
 
 
-# ── Offline decomposer (Qwen3 1.7B via Ollama) ──────────────────────────────
-
-async def _decompose_with_qwen3(message: str) -> Optional[list[dict]]:
-    """Ask the local Qwen3 1.7B model to decompose the query into JSON subtasks."""
+async def _decompose_with_groq(message: str) -> Optional[list[dict]]:
+    """Ask the lightweight Groq model to decompose the query into JSON subtasks."""
+    if not GROQ_KEY:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0)) as client:
             r = await client.post(
-                f"{OLLAMA_URL}/api/chat",
+                GROQ_URL,
+                headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
                 json={
-                    "model": OLLAMA_MODEL,
+                    "model": GROQ_DECOMPOSE_MODEL,
                     "messages": [
                         {"role": "system", "content": DECOMPOSE_SYSTEM},
                         {"role": "user",   "content": message},
                     ],
-                    "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 300},
+                    "temperature": 0.1,
+                    "max_tokens": 300,
                 },
             )
             if r.status_code != 200:
+                logger.debug("Groq decomposer returned %d: %s", r.status_code, r.text[:120])
                 return None
 
-            raw = r.json().get("message", {}).get("content", "").strip()
-            # Strip markdown fences if model wraps output
+            raw = r.json()["choices"][0]["message"]["content"].strip()
             raw = re.sub(r"^```(?:json)?\s*", "", raw)
             raw = re.sub(r"\s*```$", "", raw)
             parsed = json.loads(raw)
-            # Handle both {"tasks": [...]} and bare [...] formats
             if isinstance(parsed, dict) and "tasks" in parsed:
                 parsed = parsed["tasks"]
             if isinstance(parsed, list) and parsed:
                 return _validate_tasks(parsed)
 
-    except httpx.ConnectError:
-        logger.debug("Qwen3 offline — Ollama not running")
     except json.JSONDecodeError as e:
-        logger.debug("Qwen3 returned invalid JSON: %s", e)
+        logger.debug("Groq returned invalid JSON: %s", e)
     except Exception as e:
-        logger.debug("Qwen3 decomposer error: %s", type(e).__name__)
+        logger.debug("Groq decomposer error: %s", type(e).__name__)
 
     return None
 

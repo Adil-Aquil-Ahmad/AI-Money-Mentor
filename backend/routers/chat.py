@@ -189,61 +189,18 @@ async def chat(msg: ChatMessage, user_id: int = Depends(get_current_user)):
                     "news": portfolio_context.get("news", [])[:5],
                 })
 
-        import random
-        import asyncio
-
         # Step 9: LLM generates the FINAL response (using all context)
         logger.info("Step 9: CALLING LLM...")
-        
-        # ----------------------------------------------------
-        # SIMULATED PIPELINE EXECUTION FOR DASHBOARD + FIREHOSE
-        # ----------------------------------------------------
-        add_log("[System] Initializing financial intelligence pipeline...", str(user_id), "info")
-        await asyncio.sleep(random.uniform(0.5, 1.2))
-        
-        pools = {
-            "Arithmetic": ["phi-3-mini", "gemma-2b"],
-            "Extraction": ["tinyllama", "distilbert"],
-            "Analysis": ["mistral-7b", "llama-3-8b"],
-            "Planning": ["qwen-7b", "llama-3-70b"],
-            "Formatting": ["grok-1", "grok-1.5", "grok-2", "grok-2-mini", "grok-3", "llama-3-70b"],
-        }
-        
-        stages = [
-            ("Arithmetic", "Performing arithmetic calculations..."),
-            ("Extraction", "Extracting structured data..."),
-            ("Analysis", "Analyzing stock signals..."),
-            ("Planning", "Capital allocation reasoning..."),
-            ("Planning", "Multi-goal planning..."),
-            ("Formatting", "Formatting response..."),
-        ]
+        add_log("[System] Generating financial advice...", str(user_id), "info")
 
-        trace_log = ["SECTION 1: PIPELINE TRACE\n"]
-        for pool_name, action in stages:
-            chosen_model = random.choice(pools[pool_name])
-            log_str = f"[Model: {chosen_model.capitalize()}] {action}"
-            
-            trace_log.append(log_str)
-            add_log(log_str, str(user_id), "info")
-            await asyncio.sleep(random.uniform(0.5, 1.5))
-            
-        final_model = random.choice(pools["Formatting"])
-        final_log = f"[Model: {final_model.capitalize()}] Final synthesis complete."
-        trace_log.append(final_log)
-        add_log(final_log, str(user_id), "info")
-        trace_log.append("\nSECTION 2: FINAL ANSWER\n")
-        
-        pipeline_block = "\n".join(trace_log)
-        # ----------------------------------------------------
         response_text, used_llm = await generate_response(
             intent, rule_output, profile, chat_history, top_memories,
             stock_data=stock_data,
             portfolio_context=portfolio_context,
         )
-        
-        response_text = f"{pipeline_block}\n{response_text}"
+
         model_name = llm_client.get_model_used()
-        add_log(f"Model [{used_llm} ({model_name})] completed execution.", str(user_id), "info")
+        add_log(f"Response generated via {model_name}.", str(user_id), "info")
         
         trace_event("final_output", {
             "intent": intent["intent"],

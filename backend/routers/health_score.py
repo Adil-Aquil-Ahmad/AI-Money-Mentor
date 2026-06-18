@@ -21,14 +21,14 @@ async def health_score(user_id: int = Depends(get_current_user)):
             return {"score": 0, "message": "Please set up your profile first."}
 
         p = dict(row)
-        income = p.get("monthly_income") or 0
-        expenses = p.get("monthly_expenses") or 0
-        savings = p.get("current_savings") or 0
-        investments = p.get("current_investments") or 0
-        debt = p.get("current_debt") or 0
-        has_efund = p.get("has_emergency_fund", 0)
-        efund_months = p.get("emergency_fund_months") or 0
-        has_insurance = p.get("has_insurance", 0)
+        income = float(p.get("monthly_income") or 0)
+        expenses = float(p.get("monthly_expenses") or 0)
+        savings = float(p.get("current_savings") or 0)
+        investments = float(p.get("current_investments") or 0)
+        debt = float(p.get("current_debt") or 0)
+        has_efund = int(p.get("has_emergency_fund") or 0)
+        efund_months = float(p.get("emergency_fund_months") or 0)
+        has_insurance = int(p.get("has_insurance") or 0)
 
         categories = {}
         suggestions = []

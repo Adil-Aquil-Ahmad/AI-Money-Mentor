@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'mentor.db')
 
-# Define a simple Neural Network to evaluate Investment Strategies
 class PortfolioRecommender(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(PortfolioRecommender, self).__init__()
@@ -25,7 +24,6 @@ def prepare_data():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # We fetch all investments to train our conceptual model
     cursor.execute("""
         SELECT amount_invested, avg_price, quantity, symbol 
         FROM current_investments

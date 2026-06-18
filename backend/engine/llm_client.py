@@ -1,6 +1,6 @@
 """
-Chrysos — Hybrid LLM Client (v3 — HYBRID ROUTING)
-Provider chain: Groq API (Primary) -> Ollama Local (Secondary) -> None (Template Fallback).
+Chrysos — LLM Client (Groq API)
+Provider: Groq API → None (Template Fallback).
 """
 import hashlib
 import httpx
@@ -47,18 +47,14 @@ _CACHE_MAX = 200
 _CACHE_VERSION = "v2-template-lock"
 _last_model_used = "none"
 
-# ── Provider config (env vars) ───────────────────────────────────────────
-OLLAMA_URL   = os.getenv("OLLAMA_URL",   "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:1.7b")
-
-# Groq API Defaults
+# ── Groq API config ──────────────────────────────────────────────────────
 API_URL   = os.getenv("LLM_API_URL",   "https://api.groq.com/openai/v1/chat/completions")
 API_KEY   = os.getenv("LLM_API_KEY",   "")
 API_MODEL = os.getenv("LLM_API_MODEL", "llama-3.3-70b-versatile")
 
-# Multi-Router tier models
+# Tiered models: lightweight for simple/cheap tasks, heavyweight for complex reasoning
 LLM_LIGHTWEIGHT = os.getenv("LLM_LIGHTWEIGHT", "llama-3.1-8b-instant")
-LLM_MIDWEIGHT   = os.getenv("LLM_MIDWEIGHT",   "llama-4-scout-17b-16e-instruct")
+LLM_MIDWEIGHT   = os.getenv("LLM_MIDWEIGHT",   "gemma2-9b-it")
 LLM_HEAVYWEIGHT = os.getenv("LLM_HEAVYWEIGHT",  "llama-3.3-70b-versatile")
 USE_MULTI_ROUTER = os.getenv("USE_MULTI_ROUTER", "false").lower() == "true"
 
@@ -85,69 +81,40 @@ async def is_online() -> bool:
 
 async def generate(system_prompt: str, user_prompt: str) -> Optional[str]:
     """
-    Try LLM providers in hybrid order: API -> Local.
-    Returns the generated text, or None if ALL fail (triggering template fallback).
+    Call Groq API. Returns generated text, or None (triggers template fallback).
     """
     cache_key = _make_key(system_prompt, user_prompt)
 
-    # ── Check cache ──────────────────────────────────────────────────
     cached = await _get_cached(cache_key)
     if cached:
         set_model_used("cache-hit")
         logger.info("✅ CACHE HIT — returning cached response")
         return cached
 
-    logger.info("Cache miss — evaluating routing logic…")
-    logger.debug("System prompt (first 200 chars): %s", system_prompt[:200])
-    logger.debug("User prompt (first 300 chars): %s", user_prompt[:300])
-
+    logger.info("Cache miss — calling Groq API…")
     response: Optional[str] = None
-    online = await is_online()
+
+    if not API_KEY:
+        logger.warning("No LLM_API_KEY set — cannot call Groq.")
+        set_model_used("none")
+        return None
 
     try:
-        # ── PRIMARY: External API (Groq) ─────────────────────────────────
-        if online and API_KEY:
-            api_models = _candidate_api_models()
-            logger.info("Internet active. Trying PRIMARY API models: %s", api_models)
-            for model_name in api_models:
-                response = await _try_api(system_prompt, user_prompt, model_name)
-                if response:
-                    set_model_used(f"api:{model_name}")
-                    logger.info("✅ LLM CALLED SUCCESSFULLY via API")
-                    break
-            if not response:
-                logger.info("❌ API failed or returned empty for all configured models. Falling back to LOCAL.")
-        elif not online:
-            logger.info("No interent detected. Skipping API.")
-        elif not API_KEY:
-            logger.info("No API_KEY provided. Skipping API.")
-
-        # ── SECONDARY: Local LLM (Ollama) ─────────────────────────────────
-        if not response:
-            logger.info("Trying SECONDARY: Local Ollama (%s)", OLLAMA_MODEL)
-            response = await _try_ollama(system_prompt, user_prompt)
+        for model_name in _candidate_api_models():
+            response = await _try_api(system_prompt, user_prompt, model_name)
             if response:
-                set_model_used(f"local:{OLLAMA_MODEL}")
-                logger.info("✅ LLM CALLED SUCCESSFULLY via Local Ollama")
-            else:
-                logger.info("❌ Local Ollama failed.")
-
+                set_model_used(f"api:{model_name}")
+                logger.info("✅ Groq response received via %s", model_name)
+                break
     except Exception as e:
-        logger.error("Error during routing: %s. Forcing Local Fallback.", e)
-        # ── SAFETY NET: Force Local LLM ─────────────────────────────────
-        if not response:
-            logger.info("Trying SAFETY NET: Local Ollama (%s)", OLLAMA_MODEL)
-            response = await _try_ollama(system_prompt, user_prompt)
-            if response:
-                set_model_used(f"local:{OLLAMA_MODEL}")
+        logger.error("Groq API error: %s", e)
 
     if response:
         await _set_cached(cache_key, response)
         return response
 
-    # ── All LLMs failed ─────────────────────────────────────────
     set_model_used("none")
-    logger.warning("⚠️  ALL LLMs FAILED — System must use Template Fallback")
+    logger.warning("⚠️  Groq API failed — using Template Fallback")
     return None
 
 
@@ -225,35 +192,6 @@ def _candidate_api_models() -> list[str]:
             seen.add(item)
     return ordered
 
-
-async def _try_ollama(system: str, user: str) -> Optional[str]:
-    """Ollama local server with retry — /api/chat endpoint."""
-    for attempt in range(2):  # Retry once
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(600.0, connect=60.0)) as client:
-                r = await client.post(
-                    f"{OLLAMA_URL}/api/chat",
-                    json={
-                        "model": OLLAMA_MODEL,
-                        "messages": [
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user},
-                        ],
-                        "stream": False,
-                        "options": {
-                            "temperature": 0.6,
-                            "num_predict": 250,
-                        },
-                    },
-                )
-                if r.status_code == 200:
-                    data = r.json()
-                    text = data.get("message", {}).get("content", "").strip()
-                    if text:
-                        return text
-        except Exception as e:
-            logger.debug("Ollama error (attempt %d): %s", attempt + 1, type(e).__name__)
-    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════

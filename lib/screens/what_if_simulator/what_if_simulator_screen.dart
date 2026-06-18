@@ -312,27 +312,30 @@ class _WhatIfSimulatorScreenState extends State<WhatIfSimulatorScreen> {
               color: Colors.white, size: 24),
         ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ShaderMask(
-              shaderCallback: (b) => LinearGradient(
-                colors: [AppColors.getTextPrimary(isDark), const Color(0xFF3DE0FC)],
-              ).createShader(b),
-              child: Text(
-                'What-If Simulator',
-                style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.getTextPrimary(isDark)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ShaderMask(
+                shaderCallback: (b) => LinearGradient(
+                  colors: [AppColors.getTextPrimary(isDark), const Color(0xFF3DE0FC)],
+                ).createShader(b),
+                child: Text(
+                  'What-If Simulator',
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.getTextPrimary(isDark)),
+                ),
               ),
-            ),
-            Text(
-              'Test financial decisions before committing to them.',
-              style: TextStyle(
-                  fontSize: 13, color: AppColors.getTextTertiary(isDark)),
-            ),
-          ],
+              Text(
+                'Test financial decisions before committing to them.',
+                style: TextStyle(
+                    fontSize: 13, color: AppColors.getTextTertiary(isDark)),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ],
     );

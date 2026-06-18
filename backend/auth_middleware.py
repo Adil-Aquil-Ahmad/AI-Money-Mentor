@@ -60,26 +60,25 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> int:
     """
     FastAPI dependency: extracts Firebase token from Authorization header,
     verifies it, and returns the local user_id.
-    Falls back to user_id=1 for unauthenticated requests (dev mode).
+    Raises 401 if no valid token is provided.
     """
     if not authorization:
-        # Dev mode: no auth header → use default user
-        return 1
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     # Extract Bearer token
     parts = authorization.split(" ")
     if len(parts) != 2 or parts[0].lower() != "bearer":
-        return 1  # Graceful fallback
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
 
     token = parts[1]
     if not token or token == "null" or token == "undefined":
-        return 1
+        raise HTTPException(status_code=401, detail="Missing token")
 
     # Verify with Firebase
     firebase_user = await verify_firebase_token(token)
     if not firebase_user or not firebase_user["uid"]:
-        logger.warning("Invalid token — falling back to default user")
-        return 1
+        logger.warning("Invalid Firebase token")
+        raise HTTPException(status_code=401, detail="Invalid token")
 
     # Find or create local user
     db = await get_db()

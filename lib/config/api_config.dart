@@ -4,8 +4,14 @@ class ApiConfig {
   /// For development: http://localhost:8000
   /// For emulator (Android): http://10.0.2.2:8000
   /// For physical device: http://<your-ip>:8000
-  static const String baseUrl = 'http://10.12.34.9:8000/api';
-  static const String wsUrl = 'ws://10.12.34.9:8000/api/dev';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://chrysos-backend-888533103803.us-central1.run.app/api',
+  );
+  static const String wsUrl = String.fromEnvironment(
+    'API_WS_URL',
+    defaultValue: 'wss://chrysos-backend-888533103803.us-central1.run.app/api/dev',
+  );
   
   // For running on Android emulator, use this instead:
   // static const String baseUrl = 'http://10.0.2.2:8000/api';

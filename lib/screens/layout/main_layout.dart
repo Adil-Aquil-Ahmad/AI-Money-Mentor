@@ -8,12 +8,14 @@ import '../financial_profile/financial_profile_screen.dart';
 import '../health_score/health_score_screen.dart';
 import '../portfolio_tracker/portfolio_tracker_screen.dart';
 import '../fire_calculator/fire_calculator_screen.dart';
-import '../fire_calculator/fire_calculator_screen.dart';
 import '../what_if_simulator/what_if_simulator_screen.dart';
 import '../dev/dev_dashboard_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../services/api_service.dart';
 
 // ── Nav model ─────────────────────────────────────────────────────────────────
 class NavItem {
@@ -64,7 +66,20 @@ class _MainLayoutState extends State<MainLayout> {
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
+    _initAuth();
     _setupPushNotifications();
+  }
+
+  Future<void> _initAuth() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        if (token != null) apiService.setAuthToken(token);
+      }
+    } catch (e) {
+      debugPrint('Auth token init error: $e');
+    }
   }
 
   Future<void> _setupPushNotifications() async {
@@ -108,7 +123,8 @@ class _MainLayoutState extends State<MainLayout> {
     return Scaffold(
       backgroundColor: AppColors.getBackground(isDark),
       body: GradientBackground(
-        child: Padding(
+        child: SafeArea(
+          child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
@@ -164,6 +180,7 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ],
           ),
+        ),
         ),
       ),
       bottomNavigationBar: isMobile ? _buildMobileNav(isDark) : null,
@@ -285,7 +302,10 @@ class _GlassSidebar extends StatelessWidget {
                     icon: Icons.logout_rounded,
                     label: 'Logout',
                     color: const Color(0xFFF87171),
-                    onTap: () => Navigator.pushReplacementNamed(context, '/login'),
+                    onTap: () async {
+                      try { await GoogleSignIn().signOut(); } catch (_) {}
+                      await FirebaseAuth.instance.signOut();
+                    },
                   ),
                 ],
               ),

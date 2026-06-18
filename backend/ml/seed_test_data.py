@@ -3,7 +3,7 @@ import sqlite3
 import os
 import sys
 
-# Add backend directory to module search path so we can import services
+# Add backend directoy to module search path so we can import services
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.stock_service import get_stock_data

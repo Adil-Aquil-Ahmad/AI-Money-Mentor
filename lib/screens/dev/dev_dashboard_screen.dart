@@ -15,6 +15,7 @@ class DevDashboardScreen extends StatefulWidget {
 
 class _DevDashboardScreenState extends State<DevDashboardScreen> {
   late WebSocketChannel _channel;
+  bool _disposed = false;
   Map<String, dynamic> _systemState = {
     "active_users": 0,
     "queue_length": 0,
@@ -46,24 +47,25 @@ class _DevDashboardScreenState extends State<DevDashboardScreen> {
   }
 
   void _connectWebSocket() {
+    if (_disposed) return;
     try {
       _channel = WebSocketChannel.connect(Uri.parse(ApiConfig.wsUrl));
       _channel.stream.listen(
         (message) {
+          if (_disposed || !mounted) return;
           try {
             final data = json.decode(message);
-            setState(() {
-              _systemState = data;
-            });
+            setState(() { _systemState = data; });
           } catch (e) {
             debugPrint("Parse error: $e");
           }
         },
         onError: (error) => debugPrint("WS Error: $error"),
         onDone: () {
-          debugPrint("WS Done");
-          // Reconnect after delay
-          Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+          if (_disposed) return;
+          Future.delayed(const Duration(seconds: 3), () {
+            if (!_disposed) _connectWebSocket();
+          });
         },
       );
     } catch (e) {
@@ -96,6 +98,7 @@ class _DevDashboardScreenState extends State<DevDashboardScreen> {
 
   @override
   void dispose() {
+    _disposed = true;
     _mockTimer?.cancel();
     _channel.sink.close();
     super.dispose();
@@ -139,26 +142,11 @@ class _DevDashboardScreenState extends State<DevDashboardScreen> {
             // TOP METRICS
             Row(
               children: [
-                _buildMetricCard(
-                  'Active Jobs Limit',
-                  '${activeJobs.length} / 2',
-                  Icons.memory,
-                  Colors.blueAccent,
-                ),
-                const SizedBox(width: 16),
-                _buildMetricCard(
-                  'Queue Depth',
-                  '${_systemState["queue_length"]}',
-                  Icons.layers,
-                  Colors.orangeAccent,
-                ),
-                const SizedBox(width: 16),
-                _buildMetricCard(
-                  'Connected Users',
-                  '${_systemState["active_users"]}',
-                  Icons.people_alt,
-                  Colors.greenAccent,
-                ),
+                _buildMetricCard('Active', '${activeJobs.length}/2', Icons.memory, Colors.blueAccent),
+                const SizedBox(width: 8),
+                _buildMetricCard('Queue', '${_systemState["queue_length"]}', Icons.layers, Colors.orangeAccent),
+                const SizedBox(width: 8),
+                _buildMetricCard('Conn.', '${_systemState["active_users"]}', Icons.people_alt, Colors.greenAccent),
               ],
             ),
             const SizedBox(height: 24),
@@ -257,43 +245,22 @@ class _DevDashboardScreenState extends State<DevDashboardScreen> {
   Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: const Color(0xFF111A2E),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 20,
-              spreadRadius: -5,
-            ),
-          ],
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  value,
-                  style: GoogleFonts.outfit(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 6),
+            Text(value,
+                style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(title,
+                style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -319,13 +286,16 @@ class _DevDashboardScreenState extends State<DevDashboardScreen> {
               children: [
                 Icon(Icons.circle, size: 10, color: color),
                 const SizedBox(width: 8),
-                Text(
-                  title.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    fontSize: 12,
+                Expanded(
+                  child: Text(
+                    title.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                      fontSize: 12,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

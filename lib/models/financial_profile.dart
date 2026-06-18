@@ -26,16 +26,16 @@ class FinancialProfile {
   });
 
   factory FinancialProfile.initial() => FinancialProfile(
-    name: 'Alex',
-    age: 28,
-    income: 100000,
-    expenses: 40000,
-    savings: 50000,
-    investments: 120000,
+    name: '',
+    age: 0,
+    income: 0,
+    expenses: 0,
+    savings: 0,
+    investments: 0,
     debt: 0,
-    emergencyMonths: 4,
-    hasInsurance: true,
-    goals: 'Buy a house in 5 years',
+    emergencyMonths: 0,
+    hasInsurance: false,
+    goals: '',
     riskProfile: 'Medium',
   );
 }
