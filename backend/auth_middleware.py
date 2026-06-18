@@ -18,11 +18,11 @@ if not logger.handlers:
     ))
     logger.addHandler(handler)
 
-FIREBASE_PROJECT_ID = "ai-money-mentor-18e6a"
+FIREBASE_PROJECT_ID = "ai-study-mentor-8e9d1"
 GOOGLE_TOKEN_INFO_URL = "https://www.googleapis.com/oauth2/v3/tokeninfo"
 FIREBASE_SECURE_TOKEN_URL = (
-    f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo"
-    f"?key=AIzaSyBdAivhi38vFrHYVEU3LSFZVTE-OvPF_Og"
+    "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getAccountInfo"
+    "?key=AIzaSyCxAPmHuMJaF3JcAGu5jrQ5g0CCxyE6Fow"
 )
 
 
