@@ -34,9 +34,15 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
 
   Future<void> _loadProfile() async {
     try {
+      // Ensure auth token is set before calling backend
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        if (token != null) apiService.setAuthToken(token);
+      }
       final result = await apiService.get<Map<String, dynamic>>(
         ApiConfig.profile,
-        requireAuth: false,
+        requireAuth: true,
       );
       
       Future<double> unwrapDouble(dynamic val, double fallback) async {
@@ -99,6 +105,12 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
+      // Ensure auth token is fresh before saving
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final token = await user.getIdToken();
+        if (token != null) apiService.setAuthToken(token);
+      }
       // E2EE Envelope creation for sensitive numerics
       final payload = {
         'name': profile.name,
@@ -118,7 +130,7 @@ class _FinancialProfileScreenState extends State<FinancialProfileScreen> {
       await apiService.post<Map<String, dynamic>>(
         ApiConfig.profile,
         body: payload,
-        requireAuth: false,
+        requireAuth: true,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
